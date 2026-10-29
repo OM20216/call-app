@@ -1,0 +1,16 @@
+# dependencies & builds
+node_modules/
+frontend/dist/
+
+# secrets & local config (copy the *.example files)
+.env
+backend/config.php
+
+# local database (contains password hashes and call data)
+*.sqlite
+*.sqlite-journal
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/

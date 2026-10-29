@@ -1,0 +1,17 @@
+{
+  "name": "graph-call",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tiny HR click-to-call app: Microsoft Graph address book, a QR per contact, and a per-HR call counter.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  }
+}

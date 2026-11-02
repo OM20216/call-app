@@ -77,7 +77,8 @@
 
   <div class="actions">
     <!-- Replace APP_URL with your permanent host once deployed (see DEPLOY.md) -->
-    <a class="btn primary" id="open-app" href="https://farmers-latinas-maple-advisor.trycloudflare.com/">Open the call app →</a>
+    <a class="btn primary" id="open-app" href="https://farmers-latinas-maple-advisor.trycloudflare.com/">Open the call app (full server) →</a>
+    <a class="btn ghost" href="./app.html">Use static version on GitHub Pages</a>
     <a class="btn ghost" href="https://github.com/OM20216/call-app/blob/main/DEPLOY.md">Deployment guide</a>
     <a class="btn ghost" href="https://github.com/OM20216/call-app">Source on GitHub</a>
   </div>
@@ -102,9 +103,9 @@
   </div>
 
   <div class="note">
-    <strong>This page is static.</strong> GitHub Pages cannot run the Node service, so the link above
-    points at the hosted app, not at this repository. The app needs
-    <code>node server.js</code>, a SQLite disk and public HTTPS for Twilio callbacks.
+    <strong>Two versions.</strong> The full server version (Twilio bridge, shared call counts, HRMS sync) runs on Node —
+    GitHub Pages cannot run it. The <em>static</em> version also on this site works entirely in the browser:
+    QR → dial → measured talk time, but history stays on that device and never syncs.
     <div class="flow">
       <span>Laptop click</span>→<span>Twilio rings HR mobile</span>→<span>candidate bridged</span>→<span>duration saved</span>
     </div>

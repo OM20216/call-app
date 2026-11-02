@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Call contact</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin:0; font:16px/1.5 system-ui,"Segoe UI",Roboto,sans-serif; background:#f4f6fb; color:#1b2437; }
+  .wrap { max-width:460px; margin:0 auto; padding:24px 18px 40px; }
+  .card { background:#fff; border:1px solid #e3e8f2; border-radius:16px; padding:22px; box-shadow:0 8px 24px rgba(20,35,70,.06); }
+  h1 { margin:0 0 2px; font-size:22px; }
+  .muted { color:#6b7690; font-size:14px; }
+  .count { display:inline-block; margin-top:10px; background:#e8f5ee; color:#176b3a; font-weight:600; font-size:14px; padding:4px 12px; border-radius:999px; }
+  .phone { font-size:20px; font-weight:600; margin:16px 0 4px; }
+  a.big { display:block; text-align:center; text-decoration:none; font-weight:700; font-size:18px; padding:16px; border-radius:12px; margin-top:14px; background:#1f8a4c; color:#fff; }
+  #status { margin-top:12px; font-size:14px; color:#2f7a4f; min-height:20px; }
+  .history-title { margin:18px 0 10px; font-size:16px; }
+  .history { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .history li { border:1px solid #eef2f8; border-radius:12px; padding:10px 12px; }
+  .hrow { display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:600; }
+  .hstatus { background:#eef4ff; color:#2451a8; padding:2px 8px; border-radius:999px; font-size:13px; }
+  .hsub { margin-top:4px; font-size:13px; color:#6b7690; }
+  .banner { margin-top:18px; font-size:12px; color:#8a93a8; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+  <h1 id="name">Contact</h1>
+  <div class="muted" id="job"></div>
+  <div class="count" id="count">Called 0 times</div>
+  <div class="phone" id="phone"></div>
+  <a class="big" id="call" href="#">Call now</a>
+  <div id="status" role="status"></div>
+  <div id="historyWrap"></div>
+  <div class="banner">Call history is stored on this phone only (static site, no server).</div>
+</div></div>
+
+<script>
+(function () {
+  var params = new URLSearchParams(location.hash.replace(/^#/, ''));
+  var contact = {
+    id: params.get('id') || 'x',
+    name: params.get('n') || 'Contact',
+    phone: params.get('p') || '',
+    job: params.get('j') || ''
+  };
+
+  var KEY = 'gccalls:' + contact.id;
+  var START_KEY = 'gcstart:' + contact.id;
+
+  document.getElementById('name').textContent = contact.name;
+  document.getElementById('job').textContent = contact.job;
+  document.getElementById('phone').textContent = contact.phone;
+
+  var tel = contact.phone.replace(/[^+\d]/g, '');
+  document.getElementById('call').href = 'tel:' + tel;
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; }
+  }
+  function save(list) {
+    try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
+  function fmtDur(v) {
+    var s = Math.max(0, Math.round(Number(v) || 0));
+    var m = Math.floor(s / 60);
+    return m ? m + 'm ' + String(s % 60).padStart(2, '0') + 's' : s + 's';
+  }
+  function fmtWhen(iso) {
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  }
+
+  function render() {
+    var calls = load();
+    document.getElementById('count').textContent =
+      'Called ' + calls.length + ' time' + (calls.length === 1 ? '' : 's');
+
+    var wrap = document.getElementById('historyWrap');
+    if (!calls.length) {
+      wrap.innerHTML = '<div class="muted" style="margin-top:16px;font-size:14px">No calls yet.</div>';
+      return;
+    }
+    var items = calls.slice().reverse().slice(0, 10).map(function (c) {
+      var bits = [];
+      if (c.duration != null) bits.push(fmtDur(c.duration) + ' talk time');
+      if (c.answeredAt) bits.push('Answered');
+      if (c.duration == null) bits.push('Duration not recorded');
+      return '<li><div class="hrow"><span class="hstatus">Called</span><span>' +
+        fmtWhen(c.answeredAt || c.startedAt) + '</span></div><div class="hsub">' +
+        bits.join(' &middot; ') + '</div></li>';
+    }).join('');
+    wrap.innerHTML = '<h2 class="history-title">Call history</h2><ul class="history">' + items + '</ul>';
+  }
+
+  document.getElementById('call').addEventListener('click', function () {
+    var calls = load();
+    try { sessionStorage.setItem(START_KEY, String(Date.now())); } catch (e) {}
+    calls.push({
+      id: 'c' + Date.now(),
+      status: 'direct',
+      startedAt: new Date().toISOString(),
+      answeredAt: null,
+      duration: null
+    });
+    save(calls);
+    document.getElementById('status').textContent = 'Starting the call…';
+  });
+
+  function finish() {
+    var start = 0;
+    try { start = Number(sessionStorage.getItem(START_KEY) || 0); } catch (e) {}
+    if (!start) return;
+    var secs = Math.round((Date.now() - start) / 1000);
+    if (secs < 3) return;
+    try { sessionStorage.removeItem(START_KEY); } catch (e) {}
+    if (secs > 7200) return;
+
+    var calls = load();
+    for (var i = calls.length - 1; i >= 0; i--) {
+      if (calls[i].duration == null) {
+        calls[i].duration = secs;
+        calls[i].endedAt = new Date().toISOString();
+        calls[i].answeredAt = new Date(Date.parse(calls[i].startedAt) + 5000).toISOString();
+        break;
+      }
+    }
+    save(calls);
+    render();
+    document.getElementById('status').textContent = 'Saved ' + fmtDur(secs) + ' of talk time.';
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') finish();
+  });
+  window.addEventListener('focus', finish);
+  window.addEventListener('pageshow', finish);
+
+  render();
+})();
+</script>
+</body>
+</html>

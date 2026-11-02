@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/db.php';
+require_once __DIR__ . '/../connector/GenericCrmAdapter.php';
 
 setCORSHeaders();
 startSession();
@@ -20,21 +21,16 @@ if ($id === '') {
 $idempotencyKey = trim($data['idempotency_key'] ?? bin2hex(random_bytes(16)));
 
 try {
-   = getDB();
-  try {
-     = require __DIR__ . '/../config.php';
-     = (int)(['app']['rate_limit_calls'] ?? 10);
-     = ->prepare('SELECT COUNT(*) FROM call_attempts WHERE recruiter_id=:rid AND created_at >= (NOW() - INTERVAL 60 SECOND)');
-    ->execute([':rid' => (int)['id']]);
-    if ((int)->fetchColumn() >= ) {
-      jsonResponse(['error' => 'Rate limit exceeded. Please try again later.'], 429);
-    }
-  } catch (\Throwable ) {}
-    ->execute([':rid' => (int)['id']]);
-    if ((int)->fetchColumn() >= ) {
-      jsonResponse(['error' => 'Rate limit exceeded. Please try again later.'], 429);
-    }
-  } catch (\Throwable ) {}
+  $db = getDB();
+  $cfg = require __DIR__ . '/../config.php';
+  $rateLimit = (int)($cfg['app']['rate_limit_calls'] ?? 10);
+
+  // Rate limit: max call attempts per recruiter per minute
+  $stmt = $db->prepare('SELECT COUNT(*) FROM call_attempts WHERE recruiter_id=:rid AND created_at >= (NOW() - INTERVAL 60 SECOND)');
+  $stmt->execute([':rid' => (int)$user['id']]);
+  if ((int)$stmt->fetchColumn() >= $rateLimit) {
+    jsonResponse(['error' => 'Rate limit exceeded. Please try again later.'], 429);
+  }
 
   $stmt = $db->prepare('SELECT * FROM crm_connections WHERE is_active=1 LIMIT 1');
   $stmt->execute();
@@ -49,7 +45,7 @@ try {
       ':cid'  => $id,
       ':rid'  => (int)$user['id'],
       ':key'  => $idempotencyKey,
-      ':name' => null,
+      ':name' => trim($data['candidate_name'] ?? '') ?: null,
     ]);
   } catch (PDOException $e) {
     if ($e->getCode() === '23000') {
@@ -60,6 +56,30 @@ try {
   $countStmt = $db->prepare('SELECT COUNT(*) FROM call_attempts WHERE crm_candidate_id=:cid AND crm_connection_id=:ccid');
   $countStmt->execute([':cid' => $id, ':ccid' => (int)$conn['id']]);
   $count = (int)$countStmt->fetchColumn();
+
+  // Best-effort: write the call outcome back to the connected CRM (HRMS)
+  try {
+    $adapter = new GenericCrmAdapter(json_decode($conn['config_json'], true));
+    $crmCandidate = $adapter->getCandidate($id);
+    $adapter->logCallOutcome($id, [
+      'candidateId' => $crmCandidate['crm_id'],
+      'candidateName' => $crmCandidate['name'],
+      'contactNumber' => $crmCandidate['phone'],
+      'emailId' => $crmCandidate['email'],
+      'position' => $crmCandidate['position'],
+      'callStatus' => 'placed',
+      'remarks' => null,
+      'currentStage' => 'Call',
+      'currentStatus' => 'New',
+      'nextCallDate' => null,
+      'callAttempts' => $count,
+      'assignedTo' => null,
+      'timestamp' => date('c'),
+    ]);
+  } catch (\Throwable $e) {
+    // CRM write-back is best-effort; never fail the attempt recording because of it
+  }
+
   jsonResponse([
     'success' => true,
     'attempt_id' => (int)$db->lastInsertId(),
@@ -69,4 +89,3 @@ try {
 } catch (\Throwable $e) {
   jsonResponse(['error' => $e->getMessage()], 500);
 }
-

@@ -143,6 +143,27 @@ class GenericCrmAdapter
         return true;
     }
 
+    /**
+     * Write the full call outcome back to the CRM (HRMS call-update endpoint).
+     * Expects an array shaped like the HRMS call-result payload.
+     */
+    public function logCallOutcome(string $candidateId, array $call): bool
+    {
+        $endpointKey = 'call_update';
+        $endpoint = $this->cfg['endpoints'][$endpointKey] ?? '';
+        if ($endpoint === '') {
+            $endpointKey = 'log_call';
+            $endpoint = $this->cfg['endpoints'][$endpointKey] ?? '';
+        }
+        if ($endpoint === '') {
+            return false;
+        }
+
+        $url = $this->buildUrl($endpointKey, ['id' => $candidateId]);
+        $this->request('POST', $url, $call);
+        return true;
+    }
+
     // ─────────────────────────────────────────────────────────
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────────────────

@@ -29,10 +29,19 @@ function timeAgo(ts) {
   return `${Math.floor(hrs / 24)} d ago`;
 }
 
-const callText = (c) =>
-  c.callCount
-    ? `Called ${c.callCount} time${c.callCount === 1 ? '' : 's'} · ${timeAgo(c.lastCalled)}`
-    : 'Not called yet';
+function fmtDateTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(String(ts).replace(' ', 'T') + 'Z');
+  if (Number.isNaN(d.getTime())) return String(ts);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const callText = (c) => {
+  if (!c.callCount) return 'Not called yet';
+  const answered = c.lastAnsweredAt ? ` · answered ${timeAgo(c.lastAnsweredAt)}` : '';
+  return `Called ${c.callCount} time${c.callCount === 1 ? '' : 's'}${answered}`;
+};
 
 let toastTimer;
 function toast(message, isError = false) {
@@ -203,20 +212,33 @@ $('#modal-close').addEventListener('click', closeModal);
 $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
-/* "More": QR code, history, remove */
+/* "More": QR code, full call details, remove */
 async function openMore(id) {
   const d = await api(`/api/contacts/${id}`);
   const c = d.contact;
   const history = (d.history || [])
-    .map((h) => `<li><span>${timeAgo(h.created_at)}</span></li>`)
+    .map(
+      (h) => `
+      <li>
+        <div class="history-time">${fmtDateTime(h.answered_at || h.created_at)}</div>
+        <div class="history-meta">
+          <span class="badge">${esc(h.status || 'unknown')}</span>
+          ${h.answered_at ? `<span class="sid">Answered at ${fmtDateTime(h.answered_at)}</span>` : ''}
+          ${h.provider_sid ? `<span class="sid">SID: ${esc(h.provider_sid)}</span>` : ''}
+          ${h.duration ? `<span class="sid">Dur: ${Math.round(h.duration)}s</span>` : ''}
+        </div>
+      </li>`,
+    )
     .join('');
   openModal(`
     <h3>${esc(c.name)}</h3>
     <div class="muted">${esc(c.phone)}</div>
+    ${c.email ? `<div class="muted small">${esc(c.email)}</div>` : ''}
+    ${c.jobTitle ? `<div class="muted small">${esc(c.jobTitle)}</div>` : ''}
     <img class="qr" src="/qr/${c.token}.png" alt="QR code for ${esc(c.name)}" />
     <p class="muted small center">Scan with your phone to call ${esc(c.name)} from it.</p>
     <h4>${callText(c)}</h4>
-    ${history ? `<ul class="history">${history}</ul>` : ''}
+    ${history ? `<ul class="history">${history}</ul>` : `<p class="muted small">No calls yet.</p>`}
     <button class="btn danger-link" id="remove" type="button">Remove from my list</button>`);
 
   $('#remove').addEventListener('click', async () => {

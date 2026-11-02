@@ -27,6 +27,8 @@ export async function placeBridgedCall({ hrMobile, contactPhone }) {
     From: config.twilio.fromNumber,
     Url: twimlUrl,
     Timeout: '25',
+    StatusCallback: `${config.publicBaseUrl}/api/voice/status`,
+    StatusCallbackMethod: 'POST',
   });
 
   const auth = Buffer.from(`${config.twilio.accountSid}:${config.twilio.authToken}`).toString('base64');

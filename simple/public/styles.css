@@ -131,6 +131,10 @@ main { padding: 20px 16px 60px; max-width: 720px; margin: 0 auto; }
 }
 .history { list-style: none; margin: 0; padding: 0; font-size: 14px; color: var(--muted); }
 .history li { padding: 3px 0; border-bottom: 1px solid var(--line); }
+.history-time { font-weight: 600; color: var(--ink); }
+.history-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.badge { background: #e8f5ee; color: var(--brand-dark); font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: capitalize; }
+.sid { font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); word-break: break-all; }
 
 /* ---------- message bubble ---------- */
 .toast {

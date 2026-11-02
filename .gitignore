@@ -10,6 +10,10 @@ backend/config.php
 *.sqlite
 *.sqlite-journal
 
+# tunnel binary (download from cloudflare, do not commit 50 MB)
+cloudflared.exe
+cloudflared
+
 # OS / editor
 .DS_Store
 Thumbs.db

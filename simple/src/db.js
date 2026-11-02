@@ -7,6 +7,12 @@ const db = new DatabaseSync(path.join(rootDir, 'data.sqlite'));
 
 db.exec('PRAGMA foreign_keys = ON;');
 
+// Add columns to call_attempts if this is an older database
+try { db.exec('ALTER TABLE call_attempts ADD COLUMN duration INTEGER'); } catch (e) { /* already exists */ }
+try { db.exec('ALTER TABLE call_attempts ADD COLUMN answered_at TEXT'); } catch (e) { /* already exists */ }
+try { db.exec('ALTER TABLE call_attempts ADD COLUMN ended_at TEXT'); } catch (e) { /* already exists */ }
+try { db.exec('ALTER TABLE contacts ADD COLUMN crm_candidate_id TEXT'); } catch (e) { /* already exists */ }
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS hr_users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +28,7 @@ CREATE TABLE IF NOT EXISTS contacts (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id     INTEGER NOT NULL REFERENCES hr_users(id) ON DELETE CASCADE,
   graph_id     TEXT,
+  crm_candidate_id TEXT,
   public_token TEXT NOT NULL UNIQUE,
   name         TEXT NOT NULL,
   phone        TEXT NOT NULL,
@@ -37,6 +44,9 @@ CREATE TABLE IF NOT EXISTS call_attempts (
   hr_id        INTEGER NOT NULL REFERENCES hr_users(id) ON DELETE CASCADE,
   status       TEXT NOT NULL DEFAULT 'placed',
   provider_sid TEXT,
+  duration     INTEGER,
+  answered_at  TEXT,
+  ended_at     TEXT,
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

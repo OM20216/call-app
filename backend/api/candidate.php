@@ -29,6 +29,12 @@ try {
   }
   $adapter = new GenericCrmAdapter($configJson);
   $candidate = $adapter->getCandidate($id);
+
+  // Call count for this candidate (attempts logged by any recruiter via this app)
+  $countStmt = $db->prepare('SELECT COUNT(*) FROM call_attempts WHERE crm_candidate_id=:cid AND crm_connection_id=:ccid');
+  $countStmt->execute([':cid' => $id, ':ccid' => (int)$conn['id']]);
+  $callCount = (int)$countStmt->fetchColumn();
+
   jsonResponse([
     'candidate' => [
       'crm_id' => $candidate['crm_id'],
@@ -37,7 +43,7 @@ try {
       'email' => $candidate['email'],
       'position' => $candidate['position'],
     ],
-    'call_count' => 0,
+    'call_count' => $callCount,
   ]);
 } catch (\Throwable $e) {
   $code = $e->getCode();

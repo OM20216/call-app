@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>HR Click-to-Call</title>
+<style>
+  :root {
+    --bg: #0d1220;
+    --card: #151d31;
+    --line: #24304a;
+    --text: #e8eefc;
+    --muted: #93a1c0;
+    --green: #22a05a;
+    --green-dark: #1b8149;
+    --blue: #2f6df6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(900px 500px at 20% -10%, #1a2745 0%, var(--bg) 55%) fixed;
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 64px 22px 80px; }
+  .badge {
+    display: inline-block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: #9fe6bf; background: rgba(34,160,90,.14); border: 1px solid rgba(34,160,90,.35);
+    padding: 5px 12px; border-radius: 999px; font-weight: 600;
+  }
+  h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.15; margin: 18px 0 12px; letter-spacing: -.02em; }
+  .lede { color: var(--muted); font-size: 18px; max-width: 62ch; margin: 0 0 28px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 44px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 22px; border-radius: 10px; font-weight: 650; text-decoration: none;
+    border: 1px solid transparent; transition: transform .12s ease, background .12s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: var(--green); color: #fff; }
+  .btn.primary:hover { background: var(--green-dark); }
+  .btn.ghost { background: transparent; color: var(--text); border-color: var(--line); }
+  .btn.ghost:hover { background: var(--card); }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 18px 16px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 15px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .note {
+    margin-top: 34px; padding: 16px 18px; border-radius: 12px;
+    background: rgba(47,109,246,.08); border: 1px solid rgba(47,109,246,.28);
+    color: #c7d6f7; font-size: 14px;
+  }
+  .note strong { color: #fff; }
+  code {
+    font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: rgba(255,255,255,.07); padding: 2px 6px; border-radius: 5px;
+  }
+  footer { margin-top: 52px; padding-top: 18px; border-top: 1px solid var(--line); color: #6f7d9b; font-size: 13px; }
+  footer a { color: #8fb3ff; text-decoration: none; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; color: var(--muted); font-size: 14px; }
+  .flow span { background: rgba(255,255,255,.05); border: 1px solid var(--line); padding: 5px 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="badge">Live app</span>
+  <h1>HR click-to-call</h1>
+  <p class="lede">
+    Click <em>Call</em> on your laptop — your phone rings, then the candidate is bridged in.
+    Every call is stored with pickup time, hang-up time, talk duration and full history.
+  </p>
+
+  <div class="actions">
+    <!-- Replace APP_URL with your permanent host once deployed (see DEPLOY.md) -->
+    <a class="btn primary" id="open-app" href="https://farmers-latinas-maple-advisor.trycloudflare.com/">Open the call app →</a>
+    <a class="btn ghost" href="https://github.com/OM20216/call-app/blob/main/DEPLOY.md">Deployment guide</a>
+    <a class="btn ghost" href="https://github.com/OM20216/call-app">Source on GitHub</a>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>QR calling</h3>
+      <p>Each candidate gets a QR. Scan it on any phone, tap Call, and the attempt is recorded instantly.</p>
+    </div>
+    <div class="card">
+      <h3>Call history</h3>
+      <p>Status, local timestamp, pickup time, talk time and total talk time per contact — computed from every attempt.</p>
+    </div>
+    <div class="card">
+      <h3>Per-admin lists</h3>
+      <p>Every recruiter sees only their own contacts and their own call counts.</p>
+    </div>
+    <div class="card">
+      <h3>HRMS sync</h3>
+      <p>Candidates are pushed from the HRMS by <code>crm_candidate_id</code>; call stats flow back to the modal.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>This page is static.</strong> GitHub Pages cannot run the Node service, so the link above
+    points at the hosted app, not at this repository. The app needs
+    <code>node server.js</code>, a SQLite disk and public HTTPS for Twilio callbacks.
+    <div class="flow">
+      <span>Laptop click</span>→<span>Twilio rings HR mobile</span>→<span>candidate bridged</span>→<span>duration saved</span>
+    </div>
+  </div>
+
+  <footer>
+    HR click-to-call · <a href="https://github.com/OM20216/call-app">OM20216/call-app</a> ·
+    this site publishes only <code>/docs</code>, not the application source.
+  </footer>
+
+</div>
+<script>
+  // If the temporary tunnel is replaced by a permanent host, update this line.
+  (function () {
+    var APP_URL = 'https://farmers-latinas-maple-advisor.trycloudflare.com/';
+    var a = document.getElementById('open-app');
+    if (APP_URL && a) a.href = APP_URL;
+  })();
+</script>
+</body>
+</html>

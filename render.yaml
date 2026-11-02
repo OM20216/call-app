@@ -1,0 +1,37 @@
+# Render blueprint — deploy the call app from this repo.
+#
+# Dashboard: New + -> Blueprint -> pick this repo.
+# IMPORTANT: persistent disks need a paid instance type. On the free plan
+# remove the `disk:` block and accept that SQLite resets on each deploy.
+services:
+  - type: web
+    name: hr-call-app
+    runtime: docker
+    dockerfilePath: ./simple/Dockerfile
+    dockerContext: ./simple
+    plan: starter
+    region: singapore
+    healthCheckPath: /healthz
+    autoDeploy: true
+    disk:
+      name: call-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      # Set these in the Render dashboard (Environment tab):
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: GRAPH_TENANT_ID
+        sync: false
+      - key: GRAPH_CLIENT_ID
+        sync: false
+      - key: GRAPH_CLIENT_SECRET
+        sync: false

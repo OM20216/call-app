@@ -1,0 +1,14 @@
+# Railway config — if you prefer Railway over Render.
+# Run: railway up (or connect the repo in the dashboard)
+# Mount a volume to /data and set DATA_DIR=/data
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "simple/Dockerfile"
+
+[deploy]
+startCommand = "node server.js"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

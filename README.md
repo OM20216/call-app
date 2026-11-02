@@ -1,4 +1,21 @@
-﻿ HR Recruitment Calling App - Implementation Summary
+﻿# HR Click-to-Call
+
+Click **Call** on your laptop → your phone rings → the candidate is bridged in.
+Every attempt is stored with pickup time, hang-up time, talk duration and status.
+
+- **Running app:** `simple/` (Node 22+ / Express / built-in `node:sqlite`)
+- **Landing page:** `docs/` (published by GitHub Pages — this folder only, no app source)
+- **Hosting:** see [`DEPLOY.md`](DEPLOY.md) (Render blueprint, Railway, Fly, or a fixed Cloudflare tunnel)
+
+```powershell
+cd simple
+npm install
+npm start            # http://localhost:3000  (demo mode without Twilio)
+```
+
+---
+
+# Legacy implementation notes (PHP + React)
 
 ## What was done today
 

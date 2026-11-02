@@ -654,11 +654,17 @@ app.post('/api/voice/status', (req, res) => {
 
 app.use(express.static(path.join(rootDir, 'public')));
 
+// Host health check (Render/Railway/Fly/Docker all probe this).
+app.get('/healthz', (_req, res) => {
+  res.json({ ok: true, service: 'graph-call', uptime: Math.round(process.uptime()) });
+});
+
 app.use((req, res) => res.status(404).json({ error: `Unknown route ${req.method} ${req.path}` }));
 
 const server = app.listen(config.port, () => {
   console.log(`\n  Graph Call is running ->  ${config.publicBaseUrl}`);
   console.log(`  Local address: http://localhost:${config.port}`);
+  console.log(`  Database     : ${config.dbPath}`);
   console.log(`  Address book : ${graphEnabled ? 'Microsoft Graph' : 'DEMO data (set GRAPH_* in .env)'}`);
   console.log(`  Calling      : ${twilioEnabled ? 'Twilio bridge' : 'DEMO mode (set TWILIO_* in .env)'}\n`);
 });

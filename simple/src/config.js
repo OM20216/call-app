@@ -28,8 +28,14 @@ loadEnvFile();
 
 const port = Number(process.env.PORT || 3000);
 
+// Where data.sqlite lives. On a host with a mounted disk set DATA_DIR
+// (e.g. DATA_DIR=/data) so the database survives restarts and deploys.
+const dataDir = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : rootDir;
+
 export const config = {
   port,
+  dataDir,
+  dbPath: process.env.DB_PATH ? path.resolve(process.env.DB_PATH) : path.join(dataDir, 'data.sqlite'),
   publicBaseUrl: (process.env.PUBLIC_BASE_URL || `http://localhost:${port}`).replace(/\/+$/, ''),
   graph: {
     tenantId: process.env.GRAPH_TENANT_ID || '',

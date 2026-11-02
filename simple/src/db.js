@@ -1,9 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
-import path from 'node:path';
-import { rootDir } from './config.js';
+import fs from 'node:fs';
+import { config } from './config.js';
 
 // Built-in SQLite (Node 22+). No database server, no native compile step.
-const db = new DatabaseSync(path.join(rootDir, 'data.sqlite'));
+// DATA_DIR lets a host put the file on a persistent disk.
+if (config.dataDir) fs.mkdirSync(config.dataDir, { recursive: true });
+const db = new DatabaseSync(config.dbPath);
 
 db.exec('PRAGMA foreign_keys = ON;');
 

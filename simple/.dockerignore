@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log*
+data.sqlite
+data.sqlite-journal
+.env
+.env.*
+cloudflared.exe
+cloudflared
+*.log
+.DS_Store

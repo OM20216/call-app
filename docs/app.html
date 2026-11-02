@@ -165,9 +165,12 @@
   }
   function telHref(phone) { return 'tel:' + String(phone).replace(/[^+\d]/g, ''); }
   function pageUrl(c) {
-    var base = location.href.split('#')[0].replace(/app\.html$/, 'c.html');
-    var hash = new URLSearchParams({ id: c.id, n: c.name, p: c.phone, j: c.job || '' }).toString();
-    return base + '#' + hash;
+    var u = new URL(location.href);
+    u.search = '';
+    u.hash = '';
+    u.pathname = u.pathname.replace(/app\.html$/, 'c.html');
+    u.hash = new URLSearchParams({ id: c.id, n: c.name, p: c.phone, j: c.job || '' }).toString();
+    return u.toString();
   }
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (ch) {

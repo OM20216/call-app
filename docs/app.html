@@ -286,7 +286,6 @@
         if (calls[i].duration == null) {
           calls[i].duration = secs;
           calls[i].endedAt = new Date().toISOString();
-          calls[i].answeredAt = new Date(Date.parse(calls[i].startedAt) + 5000).toISOString();
           break;
         }
       }

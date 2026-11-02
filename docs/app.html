@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>HR Click-to-Call — static</title>
+<title>HR Click-to-Call</title>
 <style>
   :root { color-scheme: light; --line:#e3e8f2; --muted:#6b7690; --green:#1f8a4c; }
   * { box-sizing: border-box; }
   body { margin:0; font:15px/1.5 system-ui,"Segoe UI",Roboto,sans-serif; background:#f4f6fb; color:#1b2437; }
-  .wrap { max-width: 940px; margin:0 auto; padding:28px 18px 60px; }
+  .wrap { max-width: 960px; margin:0 auto; padding:28px 18px 60px; }
   header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px; }
   h1 { margin:0; font-size:24px; }
   .sub { color:var(--muted); font-size:13px; }
@@ -23,24 +23,34 @@
   .primary { background:var(--green); color:#fff; }
   .ghost { background:#fff; border-color:#cfd8e6; color:#26314a; }
   .danger { background:#fff; border-color:#efc6c6; color:#a3283c; }
-  .list { margin-top:18px; display:flex; flex-direction:column; gap:10px; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; margin:18px 0 6px; }
+  .toolbar .left { display:flex; gap:10px; flex-wrap:wrap; align-items:center; flex:1 1 260px; }
+  .toolbar input[type="search"] { max-width:320px; }
+  .toolbar button { font-size:13px; padding:9px 13px; }
+  .list { margin-top:12px; display:flex; flex-direction:column; gap:10px; }
   .row { display:grid; grid-template-columns: 1.6fr 1fr auto; gap:12px; align-items:center; padding:14px 16px; }
   .name { font-weight:650; }
   .meta { color:var(--muted); font-size:13px; }
   .stat { font-size:12px; color:#176b3a; background:#e8f5ee; padding:2px 8px; border-radius:999px; display:inline-block; margin-right:6px; }
   .stat.grey { color:#4a5570; background:#eef1f7; }
   .actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-  .actions a, .actions button { font-size:13px; padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:600; border:1px solid #cfd8e6; background:#fff; color:#26314a; }
+  .actions a, .actions button { font-size:13px; padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:600; border:1px solid #cfd8e6; background:#fff; color:#26314a; cursor:pointer; }
   .actions .call { background:var(--green); color:#fff; border-color:var(--green); }
   .empty { color:var(--muted); text-align:center; padding:28px; }
-  dialog { border:none; border-radius:16px; padding:0; box-shadow:0 20px 60px rgba(10,20,40,.25); max-width:min(94vw, 420px); }
+  dialog { border:none; border-radius:16px; padding:0; box-shadow:0 20px 60px rgba(10,20,40,.25); max-width:min(94vw, 440px); width:100%; }
   dialog::backdrop { background:rgba(10,18,34,.45); }
   .modal { padding:20px; }
   .modal h2 { margin:0 0 2px; font-size:18px; }
   .qrbox { display:flex; justify-content:center; padding:16px 0; }
-  .qrbox canvas, .qrbox img { width:240px; height:240px; image-rendering:pixelated; }
+  .qrbox canvas { width:240px; height:240px; image-rendering:pixelated; }
   .qrlink { font:12px/1.4 ui-monospace,Consolas,monospace; word-break:break-all; color:#4a5570; background:#f5f7fb; border:1px solid var(--line); border-radius:8px; padding:8px 10px; max-height:74px; overflow:auto; }
   .modal .actions { margin-top:14px; justify-content:space-between; }
+  .calls { list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:8px; max-height:50vh; overflow:auto; }
+  .calls li { border:1px solid #eef2f8; border-radius:10px; padding:9px 11px; }
+  .calls .top { display:flex; justify-content:space-between; gap:10px; font-weight:600; font-size:14px; }
+  .calls .low { color:var(--muted); font-size:13px; margin-top:2px; }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:#1b2437; color:#fff; padding:10px 18px; border-radius:999px; font-size:14px; opacity:0; pointer-events:none; transition:.22s ease; z-index:50; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   @media (max-width: 620px) { .row { grid-template-columns: 1fr; } .actions { justify-content:flex-start; } }
 </style>
 </head>
@@ -49,15 +59,15 @@
   <header>
     <div>
       <h1>HR Click-to-Call</h1>
-      <div class="sub">Static version on GitHub Pages — no server, data stays in this browser</div>
+      <div class="sub">Static app on GitHub Pages — works on any device, no server needed</div>
     </div>
     <a class="ghost" style="text-decoration:none;padding:10px 16px;border-radius:9px;border:1px solid #cfd8e6;background:#fff;font-weight:600;color:#26314a" href="./index.html">About</a>
   </header>
 
   <div class="notice">
-    <strong>Heads-up:</strong> this page cannot store shared call data. Counts and durations are saved in
-    <em>this</em> browser's localStorage, so your phone and laptop keep separate histories, and nothing syncs to HRMS.
-    For shared counts use the hosted Node app (see DEPLOY.md).
+    <strong>Where the data lives:</strong> contacts and call history are stored in <em>this browser only</em>.
+    A phone that scans a QR keeps its own history. Use <strong>Export</strong> / <strong>Import</strong> to move
+    data between devices. Nothing is sent to a server, and nothing syncs to HRMS.
   </div>
 
   <div class="card">
@@ -78,6 +88,17 @@
     </form>
   </div>
 
+  <div class="toolbar">
+    <div class="left">
+      <input id="search" type="search" placeholder="Search name or number…">
+    </div>
+    <div class="left" style="flex:0 0 auto; justify-content:flex-end">
+      <button class="ghost" id="exportBtn" type="button">Export JSON</button>
+      <button class="ghost" id="importBtn" type="button">Import JSON</button>
+      <input id="importFile" type="file" accept="application/json,.json" hidden>
+    </div>
+  </div>
+
   <div class="list" id="list"></div>
 </div>
 
@@ -95,14 +116,31 @@
   </div>
 </dialog>
 
+<dialog id="histDialog">
+  <div class="modal">
+    <h2 id="histName">Call history</h2>
+    <div class="sub" id="histPhone"></div>
+    <ul class="calls" id="histList"></ul>
+    <div class="actions">
+      <button class="ghost" id="exportOne" type="button">Export this contact</button>
+      <button class="primary" id="closeHist" type="button">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 (function () {
   var CONTACTS_KEY = 'gc:contacts';
   var CALLS_PREFIX = 'gccalls:';
   var listEl = document.getElementById('list');
-  var dlg = document.getElementById('qrDialog');
+  var qrDlg = document.getElementById('qrDialog');
+  var histDlg = document.getElementById('histDialog');
   var currentQr = null;
+  var currentContact = null;
+  var searchTerm = '';
 
   function contacts() {
     try { return JSON.parse(localStorage.getItem(CONTACTS_KEY) || '[]'); } catch (e) { return []; }
@@ -112,6 +150,9 @@
   }
   function callsFor(id) {
     try { return JSON.parse(localStorage.getItem(CALLS_PREFIX + id) || '[]'); } catch (e) { return []; }
+  }
+  function saveCalls(id, calls) {
+    localStorage.setItem(CALLS_PREFIX + id, JSON.stringify(calls));
   }
   function fmtDur(v) {
     var s = Math.max(0, Math.round(Number(v) || 0));
@@ -128,11 +169,32 @@
     var hash = new URLSearchParams({ id: c.id, n: c.name, p: c.phone, j: c.job || '' }).toString();
     return base + '#' + hash;
   }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.classList.remove('show'); }, 2200);
+  }
 
   function render() {
     var rows = contacts();
+    var q = searchTerm.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter(function (c) {
+        return (c.name || '').toLowerCase().indexOf(q) !== -1 ||
+               String(c.phone || '').toLowerCase().indexOf(q) !== -1;
+      });
+    }
     if (!rows.length) {
-      listEl.innerHTML = '<div class="card empty">No candidates yet. Add one above.</div>';
+      listEl.innerHTML = '<div class="card empty">' +
+        (q ? 'No candidate matches “' + escapeHtml(searchTerm) + '”.' : 'No candidates yet. Add one above.') +
+        '</div>';
       return;
     }
     listEl.innerHTML = rows.map(function (c) {
@@ -147,11 +209,12 @@
         '<div>' +
           '<div><span class="stat">' + calls.length + ' call' + (calls.length === 1 ? '' : 's') + '</span>' +
           (total ? '<span class="stat grey">' + fmtDur(total) + ' total</span>' : '') + '</div>' +
-          '<div class="meta">' + (last ? 'Last: ' + fmtWhen(last.answeredAt || last.startedAt) : 'Never called') + '</div>' +
+          '<div class="meta">' + (last ? 'Last: ' + fmtWhen(last.startedAt) : 'Never called') + '</div>' +
         '</div>' +
         '<div class="actions">' +
           '<a class="call" href="' + telHref(c.phone) + '">Call</a>' +
           '<button class="ghost" data-qr="' + c.id + '" type="button">QR</button>' +
+          '<button class="ghost" data-hist="' + c.id + '" type="button">History</button>' +
           '<a href="' + pageUrl(c).replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">Open</a>' +
           '<button class="danger" data-del="' + c.id + '" type="button">Delete</button>' +
         '</div>' +
@@ -159,14 +222,9 @@
     }).join('');
   }
 
-  function escapeHtml(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (ch) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
-    });
-  }
-
   function showQr(c) {
     var url = pageUrl(c);
+    currentContact = c;
     document.getElementById('qrName').textContent = c.name;
     document.getElementById('qrPhone').textContent = c.phone;
     document.getElementById('qrLink').textContent = url;
@@ -176,10 +234,9 @@
 
     if (typeof window.qrcode !== 'function') {
       box.innerHTML = '<div class="meta">QR library could not load — use the link below.</div>';
-      dlg.showModal();
+      qrDlg.showModal();
       return;
     }
-
     try {
       var qr = window.qrcode(0, 'M');
       qr.addData(url);
@@ -198,9 +255,7 @@
       ctx.fillStyle = '#0d1220';
       for (var r = 0; r < count; r++) {
         for (var col = 0; col < count; col++) {
-          if (qr.isDark(r, col)) {
-            ctx.fillRect((col + quiet) * cell, (r + quiet) * cell, cell, cell);
-          }
+          if (qr.isDark(r, col)) ctx.fillRect((col + quiet) * cell, (r + quiet) * cell, cell, cell);
         }
       }
       box.appendChild(canvas);
@@ -208,7 +263,27 @@
     } catch (err) {
       box.innerHTML = '<div class="meta">Could not draw QR — use the link below.</div>';
     }
-    dlg.showModal();
+    qrDlg.showModal();
+  }
+
+  function showHistory(c) {
+    currentContact = c;
+    document.getElementById('histName').textContent = c.name;
+    document.getElementById('histPhone').textContent = c.phone;
+    var list = document.getElementById('histList');
+    var calls = callsFor(c.id);
+    if (!calls.length) {
+      list.innerHTML = '<li><div class="low">No calls recorded in this browser yet.</div></li>';
+    } else {
+      list.innerHTML = calls.slice().reverse().map(function (x, i) {
+        var bits = [];
+        bits.push(x.duration != null ? fmtDur(x.duration) + ' talk time' : 'duration not recorded');
+        if (x.source === 'manual') bits.push('added manually');
+        return '<li><div class="top"><span>Call ' + (calls.length - i) + '</span><span>' +
+          fmtWhen(x.startedAt) + '</span></div><div class="low">' + bits.join(' · ') + '</div></li>';
+      }).join('');
+    }
+    histDlg.showModal();
   }
 
   document.getElementById('addForm').addEventListener('submit', function (e) {
@@ -220,21 +295,36 @@
     var rows = contacts();
     var digits = phone.replace(/\D/g, '');
     if (rows.some(function (x) { return String(x.phone).replace(/\D/g, '') === digits; })) {
-      alert('That number is already in the list.');
+      toast('That number is already in the list');
       return;
     }
-    rows.push({ id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, phone: phone, job: job, createdAt: new Date().toISOString() });
+    rows.push({
+      id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name,
+      phone: phone,
+      job: job,
+      createdAt: new Date().toISOString()
+    });
     saveContacts(rows);
     e.target.reset();
     render();
+    toast('Candidate added');
   });
 
   listEl.addEventListener('click', function (e) {
-    var qrId = e.target.getAttribute && e.target.getAttribute('data-qr');
-    var delId = e.target.getAttribute && e.target.getAttribute('data-del');
+    var t = e.target;
+    var qrId = t.getAttribute && t.getAttribute('data-qr');
+    var histId = t.getAttribute && t.getAttribute('data-hist');
+    var delId = t.getAttribute && t.getAttribute('data-del');
+
     if (qrId) {
       var c = contacts().filter(function (x) { return x.id === qrId; })[0];
       if (c) showQr(c);
+      return;
+    }
+    if (histId) {
+      var h = contacts().filter(function (x) { return x.id === histId; })[0];
+      if (h) showHistory(h);
       return;
     }
     if (delId) {
@@ -242,27 +332,125 @@
       saveContacts(rows);
       localStorage.removeItem(CALLS_PREFIX + delId);
       render();
+      toast('Candidate deleted');
       return;
     }
-    var callLink = e.target.closest && e.target.closest('a.call');
+
+    var callLink = t.closest && t.closest('a.call');
     if (callLink) {
-      var row = e.target.closest('.row');
+      var row = t.closest('.row');
       var id = row && row.getAttribute('data-id');
       if (!id) return;
-      var c2 = contacts().filter(function (x) { return x.id === id; })[0];
-      if (!c2) return;
       var calls = callsFor(id);
-      calls.push({ id: 'c' + Date.now(), status: 'direct', startedAt: new Date().toISOString(), answeredAt: null, duration: null });
-      localStorage.setItem(CALLS_PREFIX + id, JSON.stringify(calls));
+      calls.push({
+        id: 'c' + Date.now(),
+        status: 'direct',
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        duration: null,
+        source: 'dashboard'
+      });
+      saveCalls(id, calls);
       try { sessionStorage.setItem('gcstart:' + id, String(Date.now())); } catch (err) {}
       setTimeout(render, 50);
     }
   });
 
-  document.getElementById('closeQr').addEventListener('click', function () { dlg.close(); });
+  document.getElementById('search').addEventListener('input', function (e) {
+    searchTerm = e.target.value;
+    render();
+  });
+
+  function download(filename, text) {
+    var blob = new Blob([text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', function () {
+    var rows = contacts();
+    var out = { version: 1, exportedAt: new Date().toISOString(), contacts: rows, calls: {} };
+    rows.forEach(function (c) { out.calls[c.id] = callsFor(c.id); });
+    download('call-app-data-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(out, null, 2));
+    toast('Exported ' + rows.length + ' candidate(s)');
+  });
+
+  document.getElementById('exportOne').addEventListener('click', function () {
+    if (!currentContact) return;
+    var out = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      contacts: [currentContact],
+      calls: {}
+    };
+    out.calls[currentContact.id] = callsFor(currentContact.id);
+    download('call-app-' + String(currentContact.name).replace(/[^\w]+/g, '-').toLowerCase() + '.json',
+      JSON.stringify(out, null, 2));
+    toast('Exported this contact');
+  });
+
+  document.getElementById('importBtn').addEventListener('click', function () {
+    document.getElementById('importFile').click();
+  });
+
+  document.getElementById('importFile').addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data;
+      try { data = JSON.parse(String(reader.result)); } catch (err) { toast('That is not valid JSON'); return; }
+
+      var incoming = Array.isArray(data) ? data : (data.contacts || []);
+      if (!Array.isArray(incoming) || !incoming.length) { toast('No contacts found in that file'); return; }
+
+      var rows = contacts();
+      var added = 0;
+      incoming.forEach(function (c) {
+        if (!c || !c.name || !c.phone) return;
+        var digits = String(c.phone).replace(/\D/g, '');
+        var existing = rows.filter(function (x) {
+          return x.id === c.id || String(x.phone).replace(/\D/g, '') === digits;
+        })[0];
+        if (!existing) {
+          existing = {
+            id: c.id || ('k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
+            name: c.name, phone: c.phone, job: c.job || '',
+            createdAt: c.createdAt || new Date().toISOString()
+          };
+          rows.push(existing);
+          added++;
+        }
+        var incomingCalls = (data.calls && data.calls[c.id]) || c.calls || [];
+        if (incomingCalls.length) {
+          var mine = callsFor(existing.id);
+          var seen = {};
+          mine.forEach(function (x) { seen[x.id] = true; });
+          incomingCalls.forEach(function (x) {
+            if (!x || seen[x.id]) return;
+            mine.push(x);
+            seen[x.id] = true;
+          });
+          mine.sort(function (a, b) { return String(a.startedAt).localeCompare(String(b.startedAt)); });
+          saveCalls(existing.id, mine);
+        }
+      });
+      saveContacts(rows);
+      e.target.value = '';
+      render();
+      toast('Imported ' + added + ' new candidate(s)');
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('closeQr').addEventListener('click', function () { qrDlg.close(); });
+  document.getElementById('closeHist').addEventListener('click', function () { histDlg.close(); });
   document.getElementById('copyLink').addEventListener('click', function () {
     var text = document.getElementById('qrLink').textContent;
-    if (navigator.clipboard) navigator.clipboard.writeText(text);
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { toast('Link copied'); });
   });
   document.getElementById('downloadQr').addEventListener('click', function () {
     if (!currentQr) return;
@@ -289,7 +477,7 @@
           break;
         }
       }
-      localStorage.setItem(CALLS_PREFIX + c.id, JSON.stringify(calls));
+      saveCalls(c.id, calls);
     });
   }
   document.addEventListener('visibilitychange', function () {

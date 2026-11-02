@@ -656,8 +656,21 @@ app.use(express.static(path.join(rootDir, 'public')));
 
 app.use((req, res) => res.status(404).json({ error: `Unknown route ${req.method} ${req.path}` }));
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`\n  Graph Call is running ->  ${config.publicBaseUrl}`);
+  console.log(`  Local address: http://localhost:${config.port}`);
   console.log(`  Address book : ${graphEnabled ? 'Microsoft Graph' : 'DEMO data (set GRAPH_* in .env)'}`);
   console.log(`  Calling      : ${twilioEnabled ? 'Twilio bridge' : 'DEMO mode (set TWILIO_* in .env)'}\n`);
+});
+
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(
+      `\n  Port ${config.port} is already in use.\n` +
+        `  The app is probably already running (that is fine — just open http://localhost:${config.port}).\n` +
+        `  To start a second copy on another port:  $env:PORT=3002; npm start\n`,
+    );
+    process.exit(1);
+  }
+  throw err;
 });

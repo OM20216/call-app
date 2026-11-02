@@ -1,0 +1,16 @@
+{
+  "name": "hr-click-to-call",
+  "private": true,
+  "version": "1.0.0",
+  "description": "HR click-to-call monorepo — run scripts from the repo root",
+  "scripts": {
+    "start": "npm --prefix simple start",
+    "start:simple": "npm --prefix simple start",
+    "setup:simple": "npm --prefix simple install",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

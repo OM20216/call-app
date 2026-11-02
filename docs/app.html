@@ -95,7 +95,7 @@
   </div>
 </dialog>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 (function () {
   var CONTACTS_KEY = 'gc:contacts';
@@ -174,15 +174,39 @@
     box.innerHTML = '';
     currentQr = null;
 
-    if (window.QRCode && QRCode.toCanvas) {
+    if (typeof window.qrcode !== 'function') {
+      box.innerHTML = '<div class="meta">QR library could not load — use the link below.</div>';
+      dlg.showModal();
+      return;
+    }
+
+    try {
+      var qr = window.qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+
+      var count = qr.getModuleCount();
+      var cell = 10;
+      var quiet = 4;
+      var size = (count + quiet * 2) * cell;
       var canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#0d1220';
+      for (var r = 0; r < count; r++) {
+        for (var col = 0; col < count; col++) {
+          if (qr.isDark(r, col)) {
+            ctx.fillRect((col + quiet) * cell, (r + quiet) * cell, cell, cell);
+          }
+        }
+      }
       box.appendChild(canvas);
-      QRCode.toCanvas(canvas, url, { width: 480, margin: 1, color: { dark: '#0d1220', light: '#ffffff' } }, function (err) {
-        if (err) { box.innerHTML = '<div class="meta">Could not draw QR — use the link below.</div>'; return; }
-        currentQr = canvas;
-      });
-    } else {
-      box.innerHTML = '<div class="meta">QR library blocked — use the link below.</div>';
+      currentQr = canvas;
+    } catch (err) {
+      box.innerHTML = '<div class="meta">Could not draw QR — use the link below.</div>';
     }
     dlg.showModal();
   }
@@ -194,6 +218,11 @@
     var job = document.getElementById('job').value.trim();
     if (!name || !phone) return;
     var rows = contacts();
+    var digits = phone.replace(/\D/g, '');
+    if (rows.some(function (x) { return String(x.phone).replace(/\D/g, '') === digits; })) {
+      alert('That number is already in the list.');
+      return;
+    }
     rows.push({ id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, phone: phone, job: job, createdAt: new Date().toISOString() });
     saveContacts(rows);
     e.target.reset();

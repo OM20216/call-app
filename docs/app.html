@@ -361,9 +361,13 @@
 
   // Before we open a QR, create/reuse the server contact so the token is stable.
   function openQr(c) {
-    syncContact(c).then(function () {
+    return syncContact(c).then(function (token) {
+      if (!token) {
+        toast('Server offline — QR opened locally');
+      }
       render();
       showQr(c);
+      return token;
     });
   }
 

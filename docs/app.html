@@ -366,6 +366,8 @@
         toast('Server offline — QR opened locally');
       }
       render();
+      // The token lives in localStorage now, so shared counts can be shown right away.
+      refreshSharedStats();
       showQr(c);
       return token;
     });

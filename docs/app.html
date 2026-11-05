@@ -177,7 +177,6 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
     });
   }
-  document.getElementById('srvUrl').textContent = APP_URL || 'no server configured';
 
   function serverTokens() {
     try { return JSON.parse(localStorage.getItem(TOKEN_KEY) || '{}'); } catch (e) { return {}; }

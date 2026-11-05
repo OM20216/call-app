@@ -41,7 +41,6 @@
 <script>
 (function () {
   var APP_URL = (window.APP_CONFIG && window.APP_CONFIG.APP_URL || '').replace(/\/+$/, '');
-  document.getElementById('srvUrl2').textContent = APP_URL || 'offline mode';
 
   var params = new URLSearchParams(location.hash.replace(/^#/, ''));
   var contact = {

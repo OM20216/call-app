@@ -371,6 +371,9 @@
     });
   }
 
+  // After the QR is opened the token exists in localStorage, so pull shared stats too.
+  window._PagesSync = { contacts: contacts, tokenFor: tokenFor, fetchSharedStats: fetchSharedStats };
+
   function showHistory(c) {
     currentContact = c;
     document.getElementById('histName').textContent = c.name;

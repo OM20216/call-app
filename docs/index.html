@@ -77,8 +77,8 @@
 
   <div class="actions">
     <!-- Replace APP_URL with your permanent host once deployed (see DEPLOY.md) -->
-    <a class="btn primary" id="open-app" href="https://farmers-latinas-maple-advisor.trycloudflare.com/">Open the call app (full server) →</a>
-    <a class="btn ghost" href="./app.html">Use static version on GitHub Pages</a>
+    <a class="btn primary" id="open-app" href="https://filling-prominent-resolutions-womens.trycloudflare.com/">Open the call app (full server) →</a>
+    <a class="btn ghost" href="./app.html">Open Pages app (synced)</a>
     <a class="btn ghost" href="https://github.com/OM20216/call-app/blob/main/DEPLOY.md">Deployment guide</a>
     <a class="btn ghost" href="https://github.com/OM20216/call-app">Source on GitHub</a>
   </div>
@@ -103,9 +103,8 @@
   </div>
 
   <div class="note">
-    <strong>Two versions.</strong> The full server version (Twilio bridge, shared call counts, HRMS sync) runs on Node —
-    GitHub Pages cannot run it. The <em>static</em> version also on this site works entirely in the browser:
-    QR → dial → measured talk time, but history stays on that device and never syncs.
+    <strong>Two versions, now connected.</strong> The full server version (Twilio bridge, shared counts, HRMS sync) runs on Node — GitHub Pages cannot run it.
+    The <em>static</em> version on this site now also syncs to the call server: QR → dial → measured talk time, and every call is shared across your devices and the Node dashboard.
     <div class="flow">
       <span>Laptop click</span>→<span>Twilio rings HR mobile</span>→<span>candidate bridged</span>→<span>duration saved</span>
     </div>
@@ -120,7 +119,7 @@
 <script>
   // If the temporary tunnel is replaced by a permanent host, update this line.
   (function () {
-    var APP_URL = 'https://farmers-latinas-maple-advisor.trycloudflare.com/';
+    var APP_URL = 'https://filling-prominent-resolutions-womens.trycloudflare.com/';
     var a = document.getElementById('open-app');
     if (APP_URL && a) a.href = APP_URL;
   })();

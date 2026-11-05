@@ -34,11 +34,15 @@
   <a class="big" id="call" href="#">Call now</a>
   <div id="status" role="status"></div>
   <div id="historyWrap"></div>
-  <div class="banner">Call history is stored on this phone only (static site, no server).</div>
+  <div class="banner">Connected: <span id="srvUrl2"></span></div>
 </div></div>
 
+<script src="./config.js"></script>
 <script>
 (function () {
+  var APP_URL = (window.APP_CONFIG && window.APP_CONFIG.APP_URL || '').replace(/\/+$/, '');
+  document.getElementById('srvUrl2').textContent = APP_URL || 'offline mode';
+
   var params = new URLSearchParams(location.hash.replace(/^#/, ''));
   var contact = {
     id: params.get('id') || 'x',
@@ -74,16 +78,42 @@
     return isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
   }
 
+  // If the Pages dashboard created a server contact, remember its token so we can read shared stats.
+  function serverToken() {
+    try {
+      var map = JSON.parse(localStorage.getItem('gc:server-tokens') || '{}');
+      return (map[contact.id] || '').trim();
+    } catch (e) { return ''; }
+  }
+
+  // Ask the server for the shared record for this contact.
+  function fetchShared(token, cb) {
+    if (!APP_URL || !token) return cb(null);
+    fetch(APP_URL + '/api/contact-stats/' + encodeURIComponent(token))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(cb)
+      .catch(function () { cb(null); });
+  }
+
   function render() {
     var calls = load();
-    document.getElementById('count').textContent =
-      'Called ' + calls.length + ' time' + (calls.length === 1 ? '' : 's');
+    var token = serverToken();
+    fetchShared(token, function (shared) {
+      var total = calls.length;
+      var extra = '';
+      if (shared && shared.callCount > total) {
+        extra = ' · shared ' + shared.callCount + ' calls';
+      }
+      document.getElementById('count').textContent =
+        'Called ' + Math.max(total, shared ? shared.callCount : 0) + ' time' + (Math.max(total, shared ? shared.callCount : 0) === 1 ? '' : 's') + extra;
+    });
 
     var wrap = document.getElementById('historyWrap');
-    if (!calls.length) {
+    if (!calls.length && !token) {
       wrap.innerHTML = '<div class="muted" style="margin-top:16px;font-size:14px">No calls yet.</div>';
       return;
     }
+
     var items = calls.slice().reverse().slice(0, 10).map(function (c) {
       var bits = [];
       if (c.duration != null) bits.push(fmtDur(c.duration) + ' talk time');
@@ -96,17 +126,36 @@
     wrap.innerHTML = '<h2 class="history-title">Call history</h2><ul class="history">' + items + '</ul>';
   }
 
+  // Log this call on the shared server as well (so laptop/phone agree).
+  function shareCall(call) {
+    var token = serverToken();
+    if (!APP_URL || !token) return;
+    fetch(APP_URL + '/api/log-call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: token,
+        status: call.status || 'direct',
+        duration: call.duration != null ? call.duration : null,
+        timestamp: call.startedAt,
+        answeredAt: call.answeredAt || null
+      })
+    }).catch(function () {});
+  }
+
   document.getElementById('call').addEventListener('click', function () {
     var calls = load();
     try { sessionStorage.setItem(START_KEY, String(Date.now())); } catch (e) {}
-    calls.push({
+    var call = {
       id: 'c' + Date.now(),
       status: 'direct',
       startedAt: new Date().toISOString(),
       answeredAt: null,
       duration: null
-    });
+    };
+    calls.push(call);
     save(calls);
+    shareCall(call);
     document.getElementById('status').textContent = 'Starting the call…';
   });
 
@@ -120,14 +169,17 @@
     if (secs > 7200) return;
 
     var calls = load();
+    var updated = null;
     for (var i = calls.length - 1; i >= 0; i--) {
       if (calls[i].duration == null) {
         calls[i].duration = secs;
         calls[i].endedAt = new Date().toISOString();
+        updated = calls[i];
         break;
       }
     }
     save(calls);
+    if (updated) shareCall(updated);
     render();
     document.getElementById('status').textContent = 'Saved ' + fmtDur(secs) + ' of talk time.';
   }

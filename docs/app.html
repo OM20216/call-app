@@ -65,9 +65,9 @@
   </header>
 
   <div class="notice">
-    <strong>Where the data lives:</strong> contacts and call history are stored in <em>this browser only</em>.
-    A phone that scans a QR keeps its own history. Use <strong>Export</strong> / <strong>Import</strong> to move
-    data between devices. Nothing is sent to a server, and nothing syncs to HRMS.
+    <strong>Connected:</strong> this page talks to the call server (<code id="srvUrl"></code>).
+    Calls you log here are shared with the Node dashboard and the phone QR page.
+    If the server is offline (the tunnel is temporary), the app still works from this browser only.
   </div>
 
   <div class="card">
@@ -131,10 +131,13 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="./config.js"></script>
 <script>
 (function () {
+  var APP_URL = (window.APP_CONFIG && window.APP_CONFIG.APP_URL || '').replace(/\/+$/, '');
   var CONTACTS_KEY = 'gc:contacts';
   var CALLS_PREFIX = 'gccalls:';
+  var TOKEN_KEY = 'gc:server-tokens';
   var listEl = document.getElementById('list');
   var qrDlg = document.getElementById('qrDialog');
   var histDlg = document.getElementById('histDialog');
@@ -177,6 +180,73 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
     });
   }
+  document.getElementById('srvUrl').textContent = APP_URL || 'no server configured';
+
+  function serverTokens() {
+    try { return JSON.parse(localStorage.getItem(TOKEN_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function saveServerTokens(map) {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify(map));
+  }
+  function tokenFor(id) {
+    return (serverTokens()[id] || '').trim();
+  }
+
+  // Ask the Node server to create/reuse a contact (matches the HRMS flow).
+  function syncContact(c) {
+    var token = tokenFor(c.id);
+    if (token) return Promise.resolve(token);
+    if (!APP_URL) return Promise.resolve('');
+    return fetch(APP_URL + '/api/sync-from-hrms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        candidateId: c.id,
+        candidateName: c.name,
+        contactNumber: c.phone,
+        positionApplied: c.job || ''
+      })
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (d) {
+        if (d && d.token) {
+          var map = serverTokens();
+          map[c.id] = d.token;
+          saveServerTokens(map);
+          return d.token;
+        }
+        return '';
+      })
+      .catch(function () { return ''; });
+  }
+
+  // Record a call on the shared server so every device sees the same counts.
+  function logCallToServer(token, call) {
+    if (!APP_URL || !token) return Promise.resolve(null);
+    return fetch(APP_URL + '/api/log-call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: token,
+        status: call.status || 'direct',
+        duration: call.duration != null ? call.duration : null,
+        timestamp: call.startedAt,
+        answeredAt: call.answeredAt || null,
+        providerSid: call.providerSid || null
+      })
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .catch(function () { return null; });
+  }
+
+  // Shared (server) stats for one contact — shown next to local counts.
+  function fetchSharedStats(token) {
+    if (!APP_URL || !token) return Promise.resolve(null);
+    return fetch(APP_URL + '/api/contact-stats/' + encodeURIComponent(token))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+  }
+
   function toast(msg) {
     var el = document.getElementById('toast');
     el.textContent = msg;
@@ -203,7 +273,8 @@
     listEl.innerHTML = rows.map(function (c) {
       var calls = callsFor(c.id);
       var total = calls.reduce(function (s, x) { return s + (Number(x.duration) || 0); }, 0);
-      var last = calls.length ? calls[calls.length - 1] : null;
+      var lastLocal = calls.length ? calls[calls.length - 1] : null;
+      var shared = tokenFor(c.id) ? '<span class="shared" data-shared="' + c.id + '">shared check…</span>' : '';
       return '<div class="card row" data-id="' + c.id + '">' +
         '<div>' +
           '<div class="name">' + escapeHtml(c.name) + '</div>' +
@@ -211,8 +282,9 @@
         '</div>' +
         '<div>' +
           '<div><span class="stat">' + calls.length + ' call' + (calls.length === 1 ? '' : 's') + '</span>' +
+          '<span class="shared" data-shared="' + c.id + '"></span>' +
           (total ? '<span class="stat grey">' + fmtDur(total) + ' total</span>' : '') + '</div>' +
-          '<div class="meta">' + (last ? 'Last: ' + fmtWhen(last.startedAt) : 'Never called') + '</div>' +
+          '<div class="meta">' + (lastLocal ? 'Last: ' + fmtWhen(lastLocal.startedAt) : 'Never called locally') + '</div>' +
         '</div>' +
         '<div class="actions">' +
           '<a class="call" href="' + telHref(c.phone) + '">Call</a>' +
@@ -223,6 +295,24 @@
         '</div>' +
       '</div>';
     }).join('');
+  }
+
+  // Pull shared stats for contacts that already have a server token.
+  function refreshSharedStats() {
+    var rows = contacts();
+    var tokens = serverTokens();
+    rows.forEach(function (c) {
+      var token = tokens[c.id];
+      if (!token) return;
+      var el = document.querySelector('[data-shared="' + c.id + '"]');
+      if (!el) return;
+      el.textContent = 'shared: checking…';
+      fetchSharedStats(token).then(function (s) {
+        if (!s) { el.textContent = 'shared: server offline'; return; }
+        el.textContent = 'shared: ' + s.callCount + ' calls' +
+          (s.totalSeconds ? ' · ' + fmtDur(s.totalSeconds) : '');
+      });
+    });
   }
 
   function showQr(c) {
@@ -267,6 +357,14 @@
       box.innerHTML = '<div class="meta">Could not draw QR — use the link below.</div>';
     }
     qrDlg.showModal();
+  }
+
+  // Before we open a QR, create/reuse the server contact so the token is stable.
+  function openQr(c) {
+    syncContact(c).then(function () {
+      render();
+      showQr(c);
+    });
   }
 
   function showHistory(c) {
@@ -322,7 +420,7 @@
 
     if (qrId) {
       var c = contacts().filter(function (x) { return x.id === qrId; })[0];
-      if (c) showQr(c);
+      if (c) openQr(c);
       return;
     }
     if (histId) {
@@ -344,17 +442,26 @@
       var row = t.closest('.row');
       var id = row && row.getAttribute('data-id');
       if (!id) return;
-      var calls = callsFor(id);
-      calls.push({
+      var contact = contacts().filter(function (x) { return x.id === id; })[0];
+      if (!contact) return;
+
+      var call = {
         id: 'c' + Date.now(),
         status: 'direct',
         startedAt: new Date().toISOString(),
         endedAt: null,
         duration: null,
         source: 'dashboard'
-      });
+      };
+      var calls = callsFor(id);
+      calls.push(call);
       saveCalls(id, calls);
       try { sessionStorage.setItem('gcstart:' + id, String(Date.now())); } catch (err) {}
+
+      // Also log it on the shared server (syncs to every device + Node dashboard).
+      syncContact(contact).then(function (token) {
+        return logCallToServer(token, call);
+      });
       setTimeout(render, 50);
     }
   });
@@ -473,24 +580,33 @@
       if (secs < 3 || secs > 7200) return;
       try { sessionStorage.removeItem('gcstart:' + c.id); } catch (e) {}
       var calls = callsFor(c.id);
+      var updated = null;
       for (var i = calls.length - 1; i >= 0; i--) {
         if (calls[i].duration == null) {
           calls[i].duration = secs;
           calls[i].endedAt = new Date().toISOString();
+          updated = calls[i];
           break;
         }
       }
       saveCalls(c.id, calls);
+      if (updated) {
+        syncContact(c).then(function (token) {
+          return logCallToServer(token, updated);
+        });
+      }
     });
   }
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') { finishIfNeeded(); render(); }
+    if (document.visibilityState === 'visible') { finishIfNeeded(); render(); refreshSharedStats(); }
   });
-  window.addEventListener('focus', function () { finishIfNeeded(); render(); });
+  window.addEventListener('focus', function () { finishIfNeeded(); render(); refreshSharedStats(); });
   window.addEventListener('pageshow', function () { finishIfNeeded(); render(); });
 
   finishIfNeeded();
   render();
+  refreshSharedStats();
+  setInterval(refreshSharedStats, 30000);
 })();
 </script>
 </body>

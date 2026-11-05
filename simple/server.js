@@ -17,6 +17,8 @@ app.use((req, res, next) => {
   res.header('Vary', 'Origin');
   res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
+  // Pages app (github.io) needs to read and log calls across devices.
+  res.header('Access-Control-Max-Age', '86400');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -376,6 +378,53 @@ app.post('/api/sync-from-hrms', (req, res) => {
   });
 });
 
+/* Per-contact call stats — used by the Pages app to show shared counts + durations. */
+app.get('/api/contact-stats/:token', (req, res) => {
+  const c = contactByToken(req.params.token);
+  if (!c) return res.status(404).json({ error: 'Not found.' });
+  const stats = db
+    .prepare(
+      `SELECT COUNT(*) AS n,
+              MAX(created_at) AS last_call,
+              MAX(answered_at) AS last_answered,
+              COALESCE(SUM(duration), 0) AS total_seconds
+         FROM call_attempts WHERE contact_id = ?`,
+    )
+    .get(c.id);
+  const lastTimed = db
+    .prepare(
+      `SELECT duration, created_at, ended_at
+         FROM call_attempts
+        WHERE contact_id = ? AND duration IS NOT NULL
+        ORDER BY id DESC LIMIT 1`,
+    )
+    .get(c.id);
+  const recent = db
+    .prepare(
+      `SELECT id, status, duration, answered_at, created_at
+         FROM call_attempts
+        WHERE contact_id = ?
+        ORDER BY id DESC LIMIT 5`,
+    )
+    .all(c.id);
+  res.json({
+    ok: true,
+    token: c.public_token,
+    callCount: num(stats.n),
+    lastCallAt: stats.last_call || null,
+    lastAnsweredAt: stats.last_answered || null,
+    lastDuration: lastTimed ? num(lastTimed.duration) : null,
+    totalSeconds: num(stats.total_seconds),
+    recent: recent.map((r) => ({
+      id: num(r.id),
+      status: r.status,
+      duration: r.duration != null ? num(r.duration) : null,
+      answeredAt: r.answered_at || null,
+      createdAt: r.created_at,
+    })),
+  });
+});
+
 /* ------------------------------------------------------------------ */
 /* public QR target  (/c/<token>  and  /qr/<token>.png)                */
 /* ------------------------------------------------------------------ */
@@ -560,6 +609,47 @@ app.post('/api/public/:token/call', async (req, res) => {
 
   const rec = recordAttempt(c.id, c.owner_id, 'direct', null);
   res.json({ ok: true, mock: false, callCount: rec.callCount, attemptId: rec.attemptId, createdAt: rec.createdAt });
+});
+
+/* Log a call measured on a phone (Pages QR flow): timestamp + talk time. */
+app.post('/api/log-call', (req, res) => {
+  const b = req.body || {};
+  const token = String(b.token || '').trim();
+  if (!token) return res.status(400).json({ error: 'token is required.' });
+  const c = contactByToken(token);
+  if (!c) return res.status(404).json({ error: 'Not found.' });
+
+  const duration = b.duration != null ? Math.max(0, Math.min(7200, Math.round(Number(b.duration) || 0))) : null;
+  const ts = b.timestamp ? new Date(b.timestamp) : new Date();
+  const createdIso = Number.isNaN(ts.getTime()) ? new Date().toISOString() : ts.toISOString();
+  const answeredIso = duration != null && String(b.answeredAt || '').trim()
+    ? new Date(b.answeredAt).toISOString()
+    : null;
+
+  const info = db
+    .prepare(
+      `INSERT INTO call_attempts (contact_id, hr_id, status, provider_sid, duration, answered_at, ended_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime(?))`,
+    )
+    .run(c.id, c.owner_id, String(b.status || 'direct'), b.providerSid || null,
+      duration, answeredIso, createdIso, createdIso.replace('T', ' ').replace('Z', ''));
+
+  const stats = db
+    .prepare(
+      `SELECT COUNT(*) AS n,
+              MAX(created_at) AS last_call,
+              COALESCE(SUM(duration), 0) AS total_seconds
+         FROM call_attempts WHERE contact_id = ?`,
+    )
+    .get(c.id);
+
+  res.json({
+    ok: true,
+    id: num(info.lastInsertRowid),
+    callCount: num(stats.n),
+    lastCallAt: stats.last_call || null,
+    totalSeconds: num(stats.total_seconds),
+  });
 });
 
 /* The QR page calls this when the phone comes back from the dialer, so the

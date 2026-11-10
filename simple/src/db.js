@@ -13,7 +13,9 @@ db.exec('PRAGMA foreign_keys = ON;');
 try { db.exec('ALTER TABLE call_attempts ADD COLUMN duration INTEGER'); } catch (e) { /* already exists */ }
 try { db.exec('ALTER TABLE call_attempts ADD COLUMN answered_at TEXT'); } catch (e) { /* already exists */ }
 try { db.exec('ALTER TABLE call_attempts ADD COLUMN ended_at TEXT'); } catch (e) { /* already exists */ }
+try { db.exec('ALTER TABLE call_attempts ADD COLUMN client_id TEXT'); } catch (e) { /* already exists */ }
 try { db.exec('ALTER TABLE contacts ADD COLUMN crm_candidate_id TEXT'); } catch (e) { /* already exists */ }
+try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_attempt_client ON call_attempts(contact_id, client_id)'); } catch (e) { /* exists */ }
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS hr_users (
@@ -46,6 +48,7 @@ CREATE TABLE IF NOT EXISTS call_attempts (
   hr_id        INTEGER NOT NULL REFERENCES hr_users(id) ON DELETE CASCADE,
   status       TEXT NOT NULL DEFAULT 'placed',
   provider_sid TEXT,
+  client_id    TEXT,
   duration     INTEGER,
   answered_at  TEXT,
   ended_at     TEXT,

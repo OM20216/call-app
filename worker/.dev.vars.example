@@ -1,0 +1,15 @@
+# Copy to .dev.vars for `wrangler dev` (this file is gitignored by the repo).
+# Leave everything blank to run in demo mode (no real calls, demo address book).
+
+# Public URL used in QR codes. Blank = use http://localhost:8787 during dev.
+PUBLIC_BASE_URL=
+
+# Real calling (optional)
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
+
+# Microsoft Graph address book (optional)
+GRAPH_TENANT_ID=
+GRAPH_CLIENT_ID=
+GRAPH_CLIENT_SECRET=

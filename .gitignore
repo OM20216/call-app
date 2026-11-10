@@ -2,8 +2,14 @@
 node_modules/
 frontend/dist/
 
+# worker local state
+worker/.wrangler/
+worker/.dev.vars
+worker/.dryrun/
+
 # secrets & local config (copy the *.example files)
 .env
+.dev.vars
 backend/config.php
 
 # local database (contains password hashes and call data)

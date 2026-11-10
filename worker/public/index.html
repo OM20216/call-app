@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Graph Call</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <!-- Sign in -->
+  <section id="login-view" class="login-wrap hidden">
+    <form id="login-form" class="card login-card">
+      <h1>Graph Call</h1>
+      <label>Email<input id="login-email" type="email" autocomplete="username" required /></label>
+      <label>Password<input id="login-password" type="password" autocomplete="current-password" required /></label>
+      <button class="btn primary big" type="submit">Sign in</button>
+      <p id="login-error" class="error"></p>
+      <p class="muted small">First time? Use <code>admin@example.com</code> / <code>Admin@1234</code></p>
+    </form>
+  </section>
+
+  <!-- App: one screen -->
+  <div id="app-view" class="hidden">
+    <header class="topbar">
+      <div class="brand">Graph Call</div>
+      <button id="my-number" class="link" type="button" title="Change your mobile number"></button>
+      <button id="logout" class="link" type="button">Sign out</button>
+    </header>
+
+    <main>
+      <p id="demo-note" class="note hidden">Demo mode: calls are counted, but no phone actually rings.</p>
+
+      <!-- Shown until the HR has saved their mobile number -->
+      <form id="mobile-form" class="card setup hidden">
+        <h2>First, your mobile number</h2>
+        <p class="muted">When you press <b>Call</b>, this phone rings first. Answer it and you are connected.</p>
+        <div class="inline">
+          <input id="mobile-input" type="tel" placeholder="+91 98765 43210" required />
+          <button class="btn primary" type="submit">Save</button>
+        </div>
+        <p id="mobile-error" class="error"></p>
+      </form>
+
+      <div class="head">
+        <h2>My contacts</h2>
+        <button id="add-open" class="btn primary" type="button">+ Add person</button>
+      </div>
+      <input id="filter" class="search hidden" type="search" placeholder="Find a contact…" />
+
+      <ul id="contacts" class="list"></ul>
+      <div id="empty" class="empty hidden">
+        <p>You have no contacts yet.</p>
+        <button class="btn primary" type="button" data-action="add-open">+ Add your first person</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Pop-up (used for "Add person" and "More") -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <button id="modal-close" class="close" type="button" aria-label="Close">×</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

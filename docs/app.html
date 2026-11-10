@@ -224,6 +224,9 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         token: token,
+        // Same local call id on the "clicked" and "finished" posts, so the
+        // server updates one row instead of counting the call twice.
+        clientId: call.id,
         status: call.status || 'direct',
         duration: call.duration != null ? call.duration : null,
         timestamp: call.startedAt,

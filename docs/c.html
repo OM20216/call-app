@@ -134,6 +134,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         token: token,
+        clientId: call.id,
         status: call.status || 'direct',
         duration: call.duration != null ? call.duration : null,
         timestamp: call.startedAt,

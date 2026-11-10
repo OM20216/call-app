@@ -1,0 +1,29 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "hr-call"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+# Static dashboard UI (login, contacts, settings) served from ./public.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[observability]
+enabled = true
+
+# After `npx wrangler d1 create hr-call`, paste the database_id here.
+# For `wrangler dev` the value below is fine - local dev never touches it.
+[[d1_databases]]
+binding = "DB"
+database_name = "hr-call"
+database_id = "local-dev-placeholder"
+
+# Vars (non-secret). Leave PUBLIC_BASE_URL unset to use the request origin,
+# which is correct for both *.workers.dev and a custom domain.
+[vars]
+# PUBLIC_BASE_URL = "https://hr-call.example.workers.dev"
+
+# Secrets - set with `npx wrangler secret put <NAME>`:
+#   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+#   GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET

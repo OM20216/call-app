@@ -625,14 +625,40 @@ app.post('/api/log-call', (req, res) => {
   const answeredIso = duration != null && String(b.answeredAt || '').trim()
     ? new Date(b.answeredAt).toISOString()
     : null;
+  const endedIso = duration != null ? new Date().toISOString() : null;
+  const status = String(b.status || 'direct');
+  // The Pages app sends the same client id when it re-posts the call with its
+  // measured duration, so one call stays one row instead of counting twice.
+  const clientId = String(b.clientId || b.client_id || '').trim() || null;
 
-  const info = db
-    .prepare(
-      `INSERT INTO call_attempts (contact_id, hr_id, status, provider_sid, duration, answered_at, ended_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime(?))`,
-    )
-    .run(c.id, c.owner_id, String(b.status || 'direct'), b.providerSid || null,
-      duration, answeredIso, createdIso, createdIso.replace('T', ' ').replace('Z', ''));
+  let attemptId = null;
+  if (clientId) {
+    const existing = db
+      .prepare('SELECT id FROM call_attempts WHERE contact_id = ? AND client_id = ?')
+      .get(c.id, clientId);
+    if (existing) {
+      attemptId = num(existing.id);
+      db.prepare(
+        `UPDATE call_attempts
+            SET duration = COALESCE(?, duration),
+                answered_at = COALESCE(?, answered_at),
+                ended_at = COALESCE(?, ended_at),
+                status = COALESCE(?, status)
+          WHERE id = ?`,
+      ).run(duration, answeredIso, endedIso, status, attemptId);
+    }
+  }
+
+  if (!attemptId) {
+    const info = db
+      .prepare(
+        `INSERT INTO call_attempts (contact_id, hr_id, status, provider_sid, client_id, duration, answered_at, ended_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime(?))`,
+      )
+      .run(c.id, c.owner_id, status, b.providerSid || null, clientId,
+        duration, answeredIso, endedIso, createdIso.replace('T', ' ').replace('Z', ''));
+    attemptId = num(info.lastInsertRowid);
+  }
 
   const stats = db
     .prepare(
@@ -645,7 +671,7 @@ app.post('/api/log-call', (req, res) => {
 
   res.json({
     ok: true,
-    id: num(info.lastInsertRowid),
+    id: attemptId,
     callCount: num(stats.n),
     lastCallAt: stats.last_call || null,
     totalSeconds: num(stats.total_seconds),

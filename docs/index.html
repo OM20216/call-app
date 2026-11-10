@@ -76,8 +76,8 @@
   </p>
 
   <div class="actions">
-    <!-- Replace APP_URL with your permanent host once deployed (see DEPLOY.md) -->
-    <a class="btn primary" id="open-app" href="https://induced-accessories-notre-blogs.trycloudflare.com/">Open the call app (full server) →</a>
+    <!-- Permanent Cloudflare Worker host (see worker/README.md) -->
+    <a class="btn primary" id="open-app" href="https://hr-call.hr-call-worker.workers.dev/">Open the call app (shared) →</a>
     <a class="btn ghost" href="./app.html">Open Pages app (synced)</a>
     <a class="btn ghost" href="https://github.com/OM20216/call-app/blob/main/DEPLOY.md">Deployment guide</a>
     <a class="btn ghost" href="https://github.com/OM20216/call-app">Source on GitHub</a>
@@ -117,9 +117,9 @@
 
 </div>
 <script>
-  // If the temporary tunnel is replaced by a permanent host, update this line.
+  // Permanent Cloudflare Worker host; mirror of docs/config.js.
   (function () {
-    var APP_URL = 'https://induced-accessories-notre-blogs.trycloudflare.com/';
+    var APP_URL = 'https://hr-call.hr-call-worker.workers.dev/';
     var a = document.getElementById('open-app');
     if (APP_URL && a) a.href = APP_URL;
   })();

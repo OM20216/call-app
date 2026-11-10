@@ -165,6 +165,10 @@
   }
   function telHref(phone) { return 'tel:' + String(phone).replace(/[^+\d]/g, ''); }
   function pageUrl(c) {
+    // Prefer the shared Worker phone page so scans see shared counts/history.
+    // Fall back to the static c.html page when offline or not yet synced.
+    var token = tokenFor(c.id);
+    if (APP_URL && token) return APP_URL + '/c/' + encodeURIComponent(token);
     var u = new URL(location.href);
     u.search = '';
     u.hash = '';

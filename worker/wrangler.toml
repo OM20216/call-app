@@ -17,7 +17,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "hr-call"
-database_id = "local-dev-placeholder"
+database_id = "f13ae454-ae64-49d0-97c2-2fce44af0d73"
 
 # Vars (non-secret). Leave PUBLIC_BASE_URL unset to use the request origin,
 # which is correct for both *.workers.dev and a custom domain.

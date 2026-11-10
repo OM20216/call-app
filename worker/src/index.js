@@ -1,4 +1,4 @@
-import { SCHEMA, MIGRATIONS } from './schema.js';
+import { SCHEMA_STATEMENTS, MIGRATIONS } from './schema.js';
 import { hashPassword, verifyPassword, createSession, findSession, destroySession } from './auth.js';
 import { loadPeople, searchPeople } from './graph.js';
 import { placeBridgedCall, twimlFor, twilioConfig } from './telephony.js';
@@ -75,14 +75,26 @@ let bootPromise = null;
 async function boot(env) {
   if (bootPromise) return bootPromise;
   bootPromise = (async () => {
-    await env.DB.exec(SCHEMA);
-    for (const stmt of MIGRATIONS) {
-      try {
-        await env.DB.exec(stmt);
-      } catch (e) {
-        /* column/index already exists */
+    // Fresh database? Create everything. Otherwise it is a migrated/older
+    // database and only the ALTERs are worth attempting.
+    const existing = await env.DB
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'hr_users'")
+      .first();
+
+    if (!existing) {
+      for (const stmt of SCHEMA_STATEMENTS) {
+        await env.DB.prepare(stmt).run();
+      }
+    } else {
+      for (const stmt of MIGRATIONS) {
+        try {
+          await env.DB.prepare(stmt).run();
+        } catch (e) {
+          /* column/index already exists */
+        }
       }
     }
+
     const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM hr_users').first();
     if (!row || num(row.n) === 0) {
       await env.DB.prepare(

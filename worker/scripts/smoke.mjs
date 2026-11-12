@@ -145,16 +145,23 @@ let contactId = 0;
   ok('list contacts', list.data.contacts.length === 1 && list.data.contacts[0].callCount === 0);
 }
 
-// 5. click-to-call (demo mode)
+// 5. click-to-call (direct dial: no provider configured)
 {
   const r = await call(`/api/contacts/${contactId}/call`, { method: 'POST', body: {} });
-  ok('demo bridged call', r.status === 200 && r.data.mock === true && r.data.callCount === 1, JSON.stringify(r.data));
+  ok(
+    'direct call recorded',
+    r.status === 200 && r.data.mode === 'direct' && r.data.mock === false && r.data.callCount === 1 && r.data.url,
+    JSON.stringify(r.data),
+  );
 
   const detail = await call(`/api/contacts/${contactId}`);
   ok('history has attempt', detail.data.history.length === 1 && detail.data.contact.callCount === 1);
 
   const st = await call('/api/status');
-  ok('status endpoint', st.data.callingMode === 'demo' && st.data.runtime === 'cloudflare-workers');
+  ok(
+    'status endpoint',
+    st.data.callingMode === 'direct' && st.data.directDial === true && st.data.runtime === 'cloudflare-workers',
+  );
 }
 
 // 6. HRMS sync (create + reuse)
@@ -223,13 +230,27 @@ let token = '';
 
   const finished = await call(`/api/public/${token}/call/${placed.data.attemptId}/finish`, {
     method: 'POST',
-    body: { duration: 17 },
+    body: { duration: 17, status: 'completed' },
   });
-  ok('finish by attempt id', finished.data.attempt.duration === 17);
+  ok(
+    'finish by attempt id',
+    finished.data.attempt.duration === 17 &&
+      finished.data.attempt.status === 'completed' &&
+      !!finished.data.attempt.answered_at,
+  );
 
   const placed2 = await call(`/api/public/${token}/call`, { method: 'POST', body: { mode: 'direct' } });
-  const finished2 = await call(`/api/public/${token}/call/finish`, { method: 'POST', body: { duration: 5 } });
-  ok('finish latest open call', finished2.status === 200 && finished2.data.attemptId === placed2.data.attemptId);
+  const finished2 = await call(`/api/public/${token}/call/finish`, {
+    method: 'POST',
+    body: { duration: 0, status: 'no-answer' },
+  });
+  ok(
+    'finish latest open call',
+    finished2.status === 200 &&
+      finished2.data.attemptId === placed2.data.attemptId &&
+      finished2.data.status === 'no-answer' &&
+      finished2.data.answeredAt === null,
+  );
 }
 
 // 10. Twilio webhooks

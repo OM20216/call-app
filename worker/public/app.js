@@ -58,6 +58,7 @@ function toast(message, isError = false) {
 /* ------------------------------------------------------------------ */
 
 let me = null;
+let callingMode = 'direct';
 
 async function boot() {
   const d = await api('/api/me');
@@ -71,16 +72,25 @@ function enterApp(user) {
   setMe(user);
   loadContacts();
   api('/api/status')
-    .then((s) => $('#demo-note').classList.toggle('hidden', s.callingMode !== 'demo'))
+    .then((s) => {
+      callingMode = s.callingMode === 'twilio' ? 'twilio' : 'direct';
+      $('#mode-note').classList.toggle('hidden', callingMode !== 'direct');
+      setMe(me);
+    })
     .catch(() => {});
 }
 
 function setMe(user) {
   me = user;
-  $('#my-number').innerHTML = user.mobile
-    ? `<span class="wide">Your phone: </span>${esc(user.mobile)}`
-    : 'Set your phone';
-  $('#mobile-form').classList.toggle('hidden', !!user.mobile);
+  if (callingMode === 'direct') {
+    $('#my-number').innerHTML = '<span class="wide">Mode: </span>Free SIM calling';
+    $('#mobile-form').classList.add('hidden');
+  } else {
+    $('#my-number').innerHTML = user.mobile
+      ? `<span class="wide">Your phone: </span>${esc(user.mobile)}`
+      : 'Set your phone';
+    $('#mobile-form').classList.toggle('hidden', !!user.mobile);
+  }
   $('#mobile-input').value = user.mobile || '';
 }
 
@@ -180,22 +190,43 @@ $('#contacts').addEventListener('click', (e) => {
 });
 
 async function placeCall(id, button) {
-  if (!me.mobile) {
+  const c = contacts.find((x) => String(x.id) === String(id));
+  if (callingMode === 'twilio' && !me.mobile) {
     $('#mobile-input').focus();
     return toast('Enter your mobile number first.', true);
   }
-  const c = contacts.find((x) => String(x.id) === String(id));
   if (button) { button.disabled = true; button.textContent = 'Calling…'; }
   try {
     const d = await api(`/api/contacts/${id}/call`, { method: 'POST', body: JSON.stringify({}) });
-    toast(d.mock
-      ? `Demo: call to ${c?.name || 'contact'} counted.`
-      : `Your phone is ringing. Answer it to talk to ${c?.name || 'the contact'}.`);
     await loadContacts();
+    if (d.mode === 'direct') {
+      showCallPanel(c, d.url);
+    } else {
+      toast(`Your phone is ringing. Answer it to talk to ${c?.name || 'the contact'}.`);
+    }
   } catch (err) {
     toast(err.message, true);
+  } finally {
     if (button) { button.disabled = false; button.textContent = 'Call'; }
   }
+}
+
+/* Direct dial: the call happens on the HR's phone, so the laptop just shows
+   the QR / call-page link. On a phone we jump straight to the call page. */
+function showCallPanel(c, url) {
+  const name = c?.name || 'this contact';
+  if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    location.href = url;
+    return;
+  }
+  const token = String(url || '').split('/c/')[1] || c?.token || '';
+  openModal(`
+    <h3>Call ${esc(name)}</h3>
+    <p class="muted">Scan this code with your phone, then tap <b>Call now</b>. Your phone's SIM places the call — free and unlimited.</p>
+    <img class="qr" src="/qr/${esc(token)}.png" alt="QR code for ${esc(name)}" />
+    <p class="muted small center">Already on your phone? <a href="${esc(url)}">Open the call page</a></p>
+    <p class="muted small center">${esc(c?.phone || '')}</p>
+  `);
 }
 
 /* ------------------------------------------------------------------ */

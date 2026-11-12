@@ -5,15 +5,28 @@ same dashboard, same QR flow, but the database is Cloudflare D1 (managed
 SQLite) and there is no server to keep alive and no tunnel.
 
 ```
-laptop click ──▶ Worker /api/contacts/:id/call ──▶ Twilio rings HR mobile
+laptop click ──▶ Worker /api/contacts/:id/call ──▶ attempt counted, QR / call link shown
                                                         │
-                                              candidate bridged
+                 Phone ─▶ /c/<token> ──▶ tap "Call now" ──▶ HR's SIM dials the candidate
                                                         │
                         D1: call_attempts (status, answered_at, duration)
                                                         │
                           HRMS ──▶ POST /api/sync-from-hrms (QR + stats)
-                          Phone ─▶ /c/<token> (QR target, measures talk time)
 ```
+
+## Calling modes
+
+**Direct dial (default, free & unlimited).** No telephony provider is needed.
+Pressing **Call** on the laptop counts the attempt and shows the contact's QR
+code / phone-page link. On the phone, `/c/<token>` opens a `tel:` link so the
+HR's own SIM places the call on their mobile plan. When they come back to the
+page, a small panel asks for the talk time (pre-filled from the time spent
+away) and offers **Save call** / **Didn't connect**. Pickup time is derived as
+`ended_at - duration`, because a SIM call can't be observed by the app.
+
+**Twilio bridge (optional).** Add the three Twilio secrets below and the same
+buttons ring the HR mobile first and then bridge the candidate. Twilio's status
+webhook fills in the exact status, pickup time and duration.
 
 ## Why this replaced the tunnel
 
@@ -49,7 +62,8 @@ password: Admin@1234        <-- change it after logging in
 ## Optional secrets
 
 ```powershell
-# Real click-to-call (otherwise demo mode: counts calls, rings nothing)
+# Optional: Twilio bridged calling
+# (without these the app uses free direct dial from the HR's phone)
 npx wrangler secret put TWILIO_ACCOUNT_SID
 npx wrangler secret put TWILIO_AUTH_TOKEN
 npx wrangler secret put TWILIO_FROM_NUMBER
@@ -69,17 +83,17 @@ After setting secrets, point Twilio's number webhook at
 |---|---|---|
 | GET | `/healthz` | uptime probe |
 | POST | `/api/login` · `/api/logout` · GET `/api/me` | sessions (HttpOnly cookie) |
-| POST | `/api/settings` | save the HR mobile number |
+| POST | `/api/settings` | save the HR mobile number (Twilio mode only) |
 | GET/POST | `/api/contacts` | list / add (per owner) |
 | GET/DELETE | `/api/contacts/:id` | detail + history / delete |
-| POST | `/api/contacts/:id/call` | bridge: ring HR mobile then candidate |
+| POST | `/api/contacts/:id/call` | count a direct-dial attempt (bridge when Twilio is set) |
 | POST | `/api/sync-from-hrms` | create/reuse candidate, return QR + stats |
 | GET | `/api/contact-stats/:token` | shared counts for the Pages app |
 | POST | `/api/log-call` | phone-measured call (idempotent via `clientId`) |
-| GET | `/c/:token` | QR target page |
+| GET | `/c/:token` | QR target page (`tel:` direct dial + save panel) |
 | GET | `/qr/:token.svg` (`.png` alias) | QR image (SVG) |
-| POST | `/api/public/:token/call` | count / bridge from the phone |
-| POST | `/api/public/:token/call[/:id]/finish` | save measured talk time |
+| POST | `/api/public/:token/call` | count a call (bridge when Twilio is set) |
+| POST | `/api/public/:token/call[/:id]/finish` | save talk time + outcome (`completed` / `no-answer`) |
 | GET/POST | `/api/voice/twiml` · `/api/voice/status` | Twilio webhooks |
 
 ## Differences from the Node version

@@ -245,9 +245,11 @@ export default {
 
       if (path === '/api/status') {
         if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        const callingMode = twilioConfig(env).enabled ? 'twilio' : 'direct';
         return json(request, {
           graphMode: env.GRAPH_CLIENT_ID && env.GRAPH_CLIENT_SECRET ? 'microsoft-graph' : 'demo',
-          callingMode: twilioConfig(env).enabled ? 'twilio' : 'demo',
+          callingMode,
+          directDial: callingMode === 'direct',
           publicBaseUrl: base,
           runtime: 'cloudflare-workers',
         });
@@ -352,22 +354,33 @@ export default {
         if (!contact) return json(request, { error: 'Not found.' }, 404);
 
         const b = await readBody(request);
+
+        // No telephony provider configured: the call is placed from the HR's
+        // own phone (QR page -> tel: link), so just record the direct attempt.
+        if (!twilioConfig(env).enabled) {
+          const rec = await recordAttempt(env, contact.id, user.id, 'direct', null);
+          return json(request, {
+            ok: true,
+            mode: 'direct',
+            mock: false,
+            callCount: rec.callCount,
+            attemptId: rec.attemptId,
+            createdAt: rec.createdAt,
+            url: `${base}/c/${contact.public_token}`,
+          });
+        }
+
         const mobile = cleanPhone(b.mobile || user.mobile);
         if (!mobile) return json(request, { error: 'Add your mobile number in Settings first.' }, 400);
 
         const result = await placeBridgedCall(env, base, { hrMobile: mobile, contactPhone: contact.phone });
         if (!result.ok) return json(request, { error: result.error }, 502);
 
-        const rec = await recordAttempt(
-          env,
-          contact.id,
-          user.id,
-          result.mock ? 'demo' : 'placed',
-          result.sid,
-        );
+        const rec = await recordAttempt(env, contact.id, user.id, 'placed', result.sid);
         return json(request, {
           ok: true,
-          mock: !!result.mock,
+          mode: 'twilio',
+          mock: false,
           message: result.message,
           callCount: rec.callCount,
           attemptId: rec.attemptId,
@@ -595,7 +608,9 @@ export default {
         const mode = b.mode === 'bridge' ? 'bridge' : 'direct';
         const owner = await first(env, 'SELECT * FROM hr_users WHERE id = ?', c.owner_id);
 
-        if (mode === 'bridge') {
+        // A bridge needs a provider. Without one we fall back to direct dial:
+        // the phone page's tel: link already placed the call on the SIM.
+        if (mode === 'bridge' && twilioConfig(env).enabled) {
           const mobile = cleanPhone(owner && owner.mobile);
           if (!mobile) {
             return json(
@@ -606,16 +621,11 @@ export default {
           }
           const result = await placeBridgedCall(env, base, { hrMobile: mobile, contactPhone: c.phone });
           if (!result.ok) return json(request, { error: result.error }, 502);
-          const rec = await recordAttempt(
-            env,
-            c.id,
-            c.owner_id,
-            result.mock ? 'demo' : 'placed',
-            result.sid,
-          );
+          const rec = await recordAttempt(env, c.id, c.owner_id, 'placed', result.sid);
           return json(request, {
             ok: true,
-            mock: !!result.mock,
+            mode: 'twilio',
+            mock: false,
             message: result.message,
             callCount: rec.callCount,
             attemptId: rec.attemptId,
@@ -626,6 +636,7 @@ export default {
         const rec = await recordAttempt(env, c.id, c.owner_id, 'direct', null);
         return json(request, {
           ok: true,
+          mode: 'direct',
           mock: false,
           callCount: rec.callCount,
           attemptId: rec.attemptId,
@@ -649,11 +660,23 @@ export default {
 
         const b = await readBody(request);
         const duration = Math.max(0, Math.round(Number(b.duration) || 0));
+        const status = String(b.status || '').trim() || null;
+        // Direct-dial has no provider telling us when the candidate answered.
+        // We know the talk time, so derive pickup time as (now - duration).
+        const answeredIso =
+          duration > 0 && status !== 'no-answer'
+            ? new Date(Date.now() - duration * 1000).toISOString()
+            : null;
         await run(
           env,
-          'UPDATE call_attempts SET duration = ?, ended_at = ? WHERE id = ?',
+          `UPDATE call_attempts
+              SET duration = ?, ended_at = ?, status = COALESCE(?, status),
+                  answered_at = COALESCE(?, answered_at)
+            WHERE id = ?`,
           duration,
           new Date().toISOString(),
+          status,
+          answeredIso,
           attemptId,
         );
         const row = await first(
@@ -672,6 +695,7 @@ export default {
 
         const b = await readBody(request);
         const duration = Math.max(0, Math.round(Number(b.duration) || 0));
+        const status = String(b.status || '').trim() || null;
         const attempt = await first(
           env,
           `SELECT id FROM call_attempts
@@ -681,14 +705,31 @@ export default {
         );
         if (!attempt) return json(request, { error: 'No open call to finish.' }, 404);
 
+        // Same derivation as the per-attempt route: pickup time is unknown
+        // for direct dial, so estimate it from the measured talk time.
+        const answeredIso =
+          duration > 0 && status !== 'no-answer'
+            ? new Date(Date.now() - duration * 1000).toISOString()
+            : null;
         await run(
           env,
-          'UPDATE call_attempts SET duration = ?, ended_at = ? WHERE id = ?',
+          `UPDATE call_attempts
+              SET duration = ?, ended_at = ?, status = COALESCE(?, status),
+                  answered_at = COALESCE(?, answered_at)
+            WHERE id = ?`,
           duration,
           new Date().toISOString(),
+          status,
+          answeredIso,
           attempt.id,
         );
-        return json(request, { ok: true, attemptId: num(attempt.id), duration });
+        return json(request, {
+          ok: true,
+          attemptId: num(attempt.id),
+          duration,
+          status: status || 'direct',
+          answeredAt: answeredIso,
+        });
       }
 
       /* ---------------- QR image ---------------- */

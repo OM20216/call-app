@@ -110,8 +110,8 @@ function applyAdminVisibility() {
   $$('.admin-only').forEach((el) => el.classList.toggle('hidden', !isAdmin));
 }
 
-// Login handled by inline fallback in index.html (robust even if app.js fails to load).
-// After successful login the page reloads and boot() shows the dashboard.
+// Login is handled by the inline onclick="doLogin()" on the Sign in button.
+// app.js still boots the dashboard after login (via enterApp called from doLogin).
 
 $('#logout').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST' });

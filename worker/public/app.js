@@ -110,19 +110,8 @@ function applyAdminVisibility() {
   $$('.admin-only').forEach((el) => el.classList.toggle('hidden', !isAdmin));
 }
 
-$('#login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  $('#login-error').textContent = '';
-  try {
-    const d = await api('/api/login', {
-      method: 'POST',
-      body: JSON.stringify({ email: $('#login-email').value, password: $('#login-password').value }),
-    });
-    enterApp(d.user);
-  } catch (err) {
-    $('#login-error').textContent = err.message;
-  }
-});
+// Login handled by inline fallback in index.html (robust even if app.js fails to load).
+// After successful login the page reloads and boot() shows the dashboard.
 
 $('#logout').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST' });

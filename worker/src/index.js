@@ -236,7 +236,7 @@ export default {
       if (path === '/api/login' && method === 'POST') {
         const b = await readBody(request);
         const email = String(b.email || '').trim().toLowerCase();
-        const password = String(b.password || '');
+        const password = String(b.password || '').trim();
         const user = await first(env, 'SELECT * FROM hr_users WHERE email = ?', email);
         if (!user || !(await verifyPassword(password, user.password_hash))) {
           return json(request, { error: 'Wrong email or password.' }, 401);
@@ -839,7 +839,7 @@ export default {
         if (user.role !== 'admin') return json(request, { error: 'Admin only.' }, 403);
         const b = await readBody(request);
         const email = String(b.email || '').trim().toLowerCase();
-        const password = String(b.password || '');
+        const password = String(b.password || '').trim();
         const fullName = String(b.fullName || b.name || '').trim();
         const role = String(b.role || 'recruiter').trim();
         const mobile = cleanPhone(b.mobile || '');
@@ -874,7 +874,7 @@ export default {
           return json(request, { error: 'Not allowed.' }, 403);
         }
         const b = await readBody(request);
-        const password = String(b.password || '');
+        const password = String(b.password || '').trim();
         if (password.length < 6) return json(request, { error: 'Password must be at least 6 characters.' }, 400);
         const target = await first(env, 'SELECT id FROM hr_users WHERE id = ?', targetId);
         if (!target) return json(request, { error: 'Not found.' }, 404);

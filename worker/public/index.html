@@ -9,11 +9,11 @@
 <body>
   <!-- Sign in -->
   <section id="login-view" class="login-wrap hidden">
-    <form id="login-form" class="card login-card" onsubmit="__loginFallback(event)">
+    <form id="login-form" class="card login-card">
       <h1><img src="/openmind-logo.png" alt="OpenMind" class="login-logo" onerror="this.style.display='none'" /> Graph Call</h1>
       <label>Email<input id="login-email" type="email" autocomplete="username" required /></label>
-      <label>Password<input id="login-password" type="password" autocomplete="current-password" required /></label>
-      <button class="btn primary big" type="submit">Sign in</button>
+      <label>Password<input id="login-password" type="password" autocomplete="current-password" required onkeydown="if(event.key==='Enter')doLogin()" /></label>
+      <button class="btn primary big" type="button" onclick="doLogin()">Sign in</button>
       <p id="login-error" class="error"></p>
     </form>
   </section>
@@ -103,25 +103,23 @@
   <div id="toast" class="toast hidden" role="status"></div>
 
   <script>
-    // Fallback login handler (works even if app.js fails to load)
-    window.__loginFallback = async function (e) {
-      e.preventDefault();
+    // Login handler (inline, works even if app.js fails to load)
+    window.doLogin = async function () {
       const errEl = document.getElementById('login-error');
       if (errEl) errEl.textContent = '';
-      const btn = e.target.querySelector('button[type="submit"]');
+      const email = (document.getElementById('login-email').value || '').trim();
+      const password = (document.getElementById('login-password').value || '').trim();
+      const btn = document.querySelector('#login-form button');
       if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
       try {
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            email: document.getElementById('login-email').value.trim(),
-            password: document.getElementById('login-password').value.trim(),
-          }),
+          body: JSON.stringify({ email, password }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Login failed');
+        if (!res.ok) throw new Error(data.error || 'Login failed. Check your email and password.');
         if (typeof enterApp === 'function') {
           enterApp(data.user);
         } else {

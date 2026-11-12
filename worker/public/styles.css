@@ -69,7 +69,9 @@ input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(31,138,76,.
   display: flex; align-items: center; gap: 12px;
   background: #fff; border-bottom: 1px solid var(--line); padding: 12px 16px;
 }
-.brand { font-weight: 800; font-size: 18px; margin-right: auto; white-space: nowrap; }
+.brand { font-weight: 800; font-size: 18px; margin-right: auto; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.brand-logo { height: 22px; width: auto; }
+.login-logo { height: 30px; width: auto; vertical-align: middle; margin-right: 10px; }
 .topbar .link { white-space: nowrap; }
 @media (max-width: 480px) { .wide { display: none; } }
 

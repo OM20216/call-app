@@ -252,6 +252,9 @@ function showCallPanel(c, url) {
     <img class="qr" src="/qr/${esc(token)}.png" alt="QR code for ${esc(name)}" />
     <p class="muted small center">Already on your phone? <a href="${esc(url)}">Open the call page</a></p>
     <p class="muted small center">${esc(c?.phone || '')}</p>
+    <div class="center" style="margin-top:12px;">
+      <button class="btn ghost" type="button" data-close="1">Close</button>
+    </div>
   `);
 }
 
@@ -260,13 +263,23 @@ function showCallPanel(c, url) {
 /* ------------------------------------------------------------------ */
 
 function openModal(html) {
+  const m = $('#modal');
+  m.style.display = '';
   $('#modal-body').innerHTML = html;
-  $('#modal').classList.remove('hidden');
+  m.classList.remove('hidden');
 }
-const closeModal = () => $('#modal').classList.add('hidden');
-$('#modal-close').addEventListener('click', closeModal);
-$('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+const closeModal = () => {
+  const m = $('#modal');
+  m.classList.add('hidden');
+  m.style.display = 'none';
+};
+// Event delegation: works even if the modal content is re-rendered.
+$('#modal').addEventListener('click', (e) => {
+  if (e.target.id === 'modal') closeModal();
+  if (e.target.id === 'modal-close' || e.target.closest('#modal-close')) closeModal();
+  if (e.target.dataset && e.target.dataset.close === '1') closeModal();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').classList.contains('hidden')) closeModal(); });
 
 async function openMore(id) {
   const d = await api(`/api/contacts/${id}`);

@@ -10,7 +10,7 @@
   <!-- Sign in -->
   <section id="login-view" class="login-wrap hidden">
     <form id="login-form" class="card login-card">
-      <h1><img src="/openmind-logo.png" alt="OpenMind" class="login-logo" /> Graph Call</h1>
+      <h1><img src="/openmind-logo.png" alt="OpenMind" class="login-logo" onerror="this.style.display='none'" /> Graph Call</h1>
       <label>Email<input id="login-email" type="email" autocomplete="username" required /></label>
       <label>Password<input id="login-password" type="password" autocomplete="current-password" required /></label>
       <button class="btn primary big" type="submit">Sign in</button>
@@ -21,7 +21,7 @@
   <!-- App: one screen -->
   <div id="app-view" class="hidden">
     <header class="topbar">
-      <div class="brand"><img src="/openmind-logo.png" alt="OpenMind" class="brand-logo" /> Graph Call</div>
+      <div class="brand"><img src="/openmind-logo.png" alt="OpenMind" class="brand-logo" onerror="this.style.display='none'" /> Graph Call</div>
       <button id="my-number" class="link" type="button" title="Change your mobile number"></button>
       <button id="logout" class="link" type="button">Sign out</button>
     </header>
@@ -93,7 +93,7 @@
   </div>
 
   <!-- Pop-up (used for "Add person" and "More") -->
-  <div id="modal" class="modal hidden">
+  <div id="modal" class="modal hidden" style="display:none;">
     <div class="modal-card" role="dialog" aria-modal="true">
       <button id="modal-close" class="close" type="button" aria-label="Close">×</button>
       <div id="modal-body"></div>

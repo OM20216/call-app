@@ -179,7 +179,7 @@ export function phonePage({ contact, history, callCount }) {
     var start = takeStart();
     if (!start) return;
     var secs = Math.round((Date.now() - start) / 1000);
-    if (secs > 7200) {
+    if (secs > 1800) {
       try { sessionStorage.removeItem(KEY_T); } catch (e) {}
       return;
     }

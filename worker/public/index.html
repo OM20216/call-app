@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Graph Call</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=2" />
 </head>
 <body>
   <!-- Sign in -->
@@ -122,7 +122,11 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Login failed');
-        location.reload();
+        if (typeof enterApp === 'function') {
+          enterApp(data.user);
+        } else {
+          location.reload();
+        }
       } catch (err) {
         if (errEl) errEl.textContent = err.message || 'Login failed. Check your email and password.';
       } finally {
@@ -130,6 +134,6 @@
       }
     };
   </script>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=2"></script>
 </body>
 </html>

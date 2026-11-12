@@ -72,14 +72,20 @@ let isAdmin = false;
 async function boot() {
   const d = await api('/api/me');
   if (d.authenticated) return enterApp(d.user);
-  $('#login-view').classList.remove('hidden');
+  const lv = $('#login-view');
+  lv.classList.remove('hidden');
+  lv.style.display = '';
 }
 
 function enterApp(user) {
   me = user;
   isAdmin = user.role === 'admin';
-  $('#login-view').classList.add('hidden');
-  $('#app-view').classList.remove('hidden');
+  const lv = $('#login-view');
+  const av = $('#app-view');
+  lv.classList.add('hidden');
+  lv.style.display = 'none';
+  av.classList.remove('hidden');
+  av.style.display = '';
   setMe(user);
   loadContacts(true);
   api('/api/status')

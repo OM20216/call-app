@@ -183,6 +183,10 @@ function renderContacts() {
 
 async function loadContacts(reset = false) {
   if (reset) { contacts = []; contactPage = 1; }
+  const list = $('#contacts');
+  const empty = $('#empty');
+  if (empty) empty.classList.add('hidden');
+  if (reset) list.innerHTML = '<li class="muted" style="padding:12px;">Loading contacts…</li>';
   const d = await api(`/api/contacts?q=${encodeURIComponent(contactQuery)}&page=${contactPage}&limit=50`);
   contacts = reset ? d.contacts : contacts.concat(d.contacts);
   contactHasMore = !!d.hasMore;

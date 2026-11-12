@@ -65,16 +65,16 @@ export function phonePage({ contact, history, callCount }) {
   .card { background:#fff; border:1px solid #e3e8f2; border-radius:16px; padding:22px; box-shadow:0 8px 24px rgba(20,35,70,.06); }
   h1 { margin:0 0 2px; font-size:22px; }
   .muted { color:#6b7690; font-size:14px; }
-  .count { display:inline-block; margin-top:10px; background:#e8f5ee; color:#176b3a; font-weight:600; font-size:14px; padding:4px 12px; border-radius:999px; }
+  .count { display:inline-block; margin-top:10px; background:#eceef9; color:#303090; font-weight:600; font-size:14px; padding:4px 12px; border-radius:999px; }
   .phone { font-size:20px; font-weight:600; margin:16px 0 4px; }
   a.big { display:block; text-align:center; text-decoration:none; font-weight:700; font-size:18px; padding:16px; border-radius:12px; margin-top:14px; }
-  a.call { background:#1f8a4c; color:#fff; }
-  #status { margin-top:12px; font-size:14px; color:#2f7a4f; min-height:20px; }
+  a.call { background:#303090; color:#fff; }
+  #status { margin-top:12px; font-size:14px; color:#303090; min-height:20px; }
   .history-title { margin:18px 0 10px; font-size:16px; }
   .history { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
   .history li { border:1px solid #eef2f8; border-radius:12px; padding:10px 12px; }
   .hrow { display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:600; }
-  .hstatus { background:#eef4ff; color:#2451a8; padding:2px 8px; border-radius:999px; font-size:13px; }
+  .hstatus { background:#eceef9; color:#303090; padding:2px 8px; border-radius:999px; font-size:13px; }
   .hsub { margin-top:4px; font-size:13px; color:#6b7690; }
   .mutedsmall { font-size:12px; color:#6b7690; margin-top:2px; }
   .finish { margin-top:14px; border:1px solid #d8e4f5; background:#f7faff; border-radius:12px; padding:14px; }
@@ -84,7 +84,7 @@ export function phonePage({ contact, history, callCount }) {
   .frow input { width:96px; padding:8px; border:1px solid #cfd9ea; border-radius:8px; font-size:15px; }
   .fbtns { display:flex; gap:10px; }
   .fbtns button { flex:1; padding:12px; border-radius:10px; border:1px solid transparent; font-size:15px; font-weight:600; cursor:pointer; }
-  .fbtns .go { background:#1f8a4c; color:#fff; }
+  .fbtns .go { background:#303090; color:#fff; }
   .fbtns .skip { background:#fff; color:#41506b; border-color:#cfd9ea; }
 </style></head>
 <body><div class="wrap"><div class="card">
@@ -134,7 +134,7 @@ export function phonePage({ contact, history, callCount }) {
     try { sessionStorage.setItem(KEY_T, String(start)); } catch (e) {}
     finishEl.classList.add('hidden');
     pending = 0;
-    statusEl.style.color = '#2f7a4f';
+    statusEl.style.color = '#303090';
     statusEl.textContent = 'Starting the call…';
     fetch('/api/public/' + token + '/call', {
       method: 'POST',
@@ -162,7 +162,7 @@ export function phonePage({ contact, history, callCount }) {
     pending = start;
     durEl.value = String(Math.max(0, secs));
     finishEl.classList.remove('hidden');
-    statusEl.style.color = '#2f7a4f';
+    statusEl.style.color = '#303090';
     statusEl.textContent = 'Call finished? Check the talk time and save.';
     try { finishEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
   }
@@ -171,7 +171,7 @@ export function phonePage({ contact, history, callCount }) {
     if (!pending) return;
     saveBtn.disabled = true;
     nocBtn.disabled = true;
-    statusEl.style.color = '#2f7a4f';
+    statusEl.style.color = '#303090';
     statusEl.textContent = 'Saving…';
     try {
       var r = await fetch('/api/public/' + token + '/call/finish', {

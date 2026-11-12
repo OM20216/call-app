@@ -2,11 +2,12 @@
   "name": "hr-click-to-call",
   "private": true,
   "version": "1.0.0",
-  "description": "HR click-to-call monorepo — run scripts from the repo root",
+  "description": "HR click-to-call. The main (permanent) app is the Cloudflare Worker (worker/), live at https://hr-call.hr-call-worker.workers.dev",
   "scripts": {
-    "start": "npm --prefix simple start",
-    "start:simple": "npm --prefix simple start",
-    "setup:simple": "npm --prefix simple install",
+    "start": "node scripts/open-app.mjs",
+    "test": "npm --prefix worker run check && node worker/scripts/smoke.mjs",
+    "start:legacy": "npm --prefix simple start",
+    "setup:legacy": "npm --prefix simple install",
     "dev:frontend": "npm --prefix frontend run dev",
     "build:frontend": "npm --prefix frontend run build"
   },

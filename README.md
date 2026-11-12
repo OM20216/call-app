@@ -1,72 +1,48 @@
 ﻿# HR Click-to-Call
 
-Click **Call** on your laptop → your phone rings → the candidate is bridged in.
-Every attempt is stored with pickup time, hang-up time, talk duration and status.
+Click **Call** on your laptop → your phone dials the candidate on its own SIM (free, unlimited) →
+every attempt is stored with status, pickup time, hang-up time, talk duration and full history.
 
-- **Running app:** `simple/` (Node 22+ / Express / built-in `node:sqlite`)
-- **Landing page:** `docs/` (published by GitHub Pages — this folder only, no app source)
-- **Hosting:** see [`DEPLOY.md`](DEPLOY.md) (Render blueprint, Railway, Fly, or a fixed Cloudflare tunnel)
+## Main app (use this)
+
+The permanent app is **`worker/`** (Cloudflare Workers + D1), live at:
+
+**https://hr-call.hr-call-worker.workers.dev**
+
+- Login: `admin@example.com` / `Admin@1234` (change after first login)
+- No server to keep running, data persists in D1.
+- Calling is **direct dial**: the QR page opens a `tel:` link on the HR's phone.
+- Full guide: [`worker/README.md`](worker/README.md)
+
+### Local testing
+
+`wrangler dev` is blocked on some managed Windows machines (Application Control policy), so use
+the offline suite — it runs the real worker code against `node:sqlite`:
 
 ```powershell
-cd simple
-npm install
-npm start            # http://localhost:3000  (demo mode without Twilio)
+cd worker
+node scripts/smoke.mjs     # 36 checks: auth, CRUD, sync, idempotency, QR, webhooks
 ```
 
----
+`npm start` opens the live app (https://hr-call.hr-call-worker.workers.dev) in your default browser.
+`npm test` runs `node --check` + the 36-check smoke suite (`worker/scripts/smoke.mjs`).
 
-# Legacy implementation notes (PHP + React)
+## Legacy variants (do NOT use for the new app)
 
-## What was done today
+These older experiments are still in the repo but are **not** the main app:
 
-### 1. Backend (PHP)
-Created API endpoints in `backend/api/`:
-- `me.php` - Check authentication status and get current user
-- `auth.php` / `login.php` - Login with email/password, session m#anagement
-- `csrf.php` - Get CSRF token for POST requests
-- `candidate.php` - Fetch candidate by ID via active CRM connection using GenericCrmAdapter; returns normalized candidate + call count
-- `call-attempt.php` - Record call attempt (POST), CSRF protected, uses idempotency key, returns updated call count
-- `call-attempts.php` - Get call attempt history for a candidate
+| Folder | Stack | Notes |
+|---|---|---|
+| `simple/` | Node + Express + SQLite | Old Node version; `npm start` used to run this. Now `npm run start:legacy`. |
+| `frontend/` | React + Vite + PHP backend | Expects `backend/` (PHP) on port 8000. |
+| `backend/` | PHP API | Legacy CRM adapter. |
+| `docs/` | GitHub Pages | Static landing + redundant dashboard; QRs now point at the Worker. |
 
-Updated helpers:
-- `response.php` - CORS handling, JSON responses
-- `auth.php` - Session management, auth/CSRF helpers
-- `config.php` - Updated allowed origins
+If you ran `npm start` in VS Code before and saw a different UI, that's why — it launched the
+legacy `simple/` app. Use the live Worker URL above (or `worker/scripts/smoke.mjs` locally).
 
-### 2. Frontend (React + Vite)
-Created React app in `frontend/` with:
-- `Login.jsx` - Login page
-- `QRScannerPage.jsx` - QR code scanner (html5-qrcode)
-- `CandidateCall.jsx` - Candidate details, call count, call button (opens tel: after recording attempt)
-- Routing with React Router
-- Basic styling in `App.css`/`index.css`
-- API integration with credentials + CSRF
+## HRMS integration
 
-Built successfully: `frontend/dist/` contains production build.
-
-### 3. Key features
-- Login with existing CRM auth (uses `hr_users` table)
-- QR scanning to resolve candidate ID
-- Candidate lookup via GenericCrmAdapter against active CRM connection
-- Call attempts logged to `call_attempts` table
-- Call count displayed from server
-- Opens device dialer via `tel:` after successful attempt recording
-- CSRF protection, CORS, session cookies
-
-## How to run
-
-### Backend (PHP server)
-```bash
-cd backend
-php -S localhost:8000
-```
-Or configure web server to serve PHP files; API routes are under `/api/`.
-
-### Frontend
-Dev: `cd frontend && npm run dev` (proxies /api to localhost:8000)
-Prod: serve `frontend/dist/` files.
-
-## Notes
-- App uses existing CRM schema (crm_connections, call_attempts, hr_users). No separate candidate DB introduced.
-- Per requirement: "app only should work as a pathway for call only" - it records call attempts and opens dialer, no VoIP tracking.
-
+`HR CRM(OFFICIAL)/HRMS` talks to the Worker via `VITE_CALL_APP_URL` / `VITE_CALL_PUBLIC_URL`
+(already set to the Worker URL). Candidate → QR → call flow works; writing call results back
+to SharePoint needs `MS_CLIENT_SECRET` (see `worker/README.md`).

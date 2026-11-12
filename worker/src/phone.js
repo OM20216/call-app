@@ -77,7 +77,8 @@ export function phonePage({ contact, history, callCount }) {
   .hstatus { background:#eceef9; color:#303090; padding:2px 8px; border-radius:999px; font-size:13px; }
   .hsub { margin-top:4px; font-size:13px; color:#6b7690; }
   .mutedsmall { font-size:12px; color:#6b7690; margin-top:2px; }
-  .finish { margin-top:14px; border:1px solid #d8e4f5; background:#f7faff; border-radius:12px; padding:14px; }
+  .finish { margin-top:14px; border:1px solid #d8e4f5; background:#f7faff; border-radius:12px; padding:14px; position:relative; }
+  .dismiss { position:absolute; top:8px; right:10px; background:none; border:0; font-size:20px; line-height:1; color:#6b7690; cursor:pointer; }
   .finish.hidden { display:none; }
   .ftitle { font-weight:700; margin-bottom:10px; }
   .frow { display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:14px; color:#41506b; }
@@ -96,7 +97,7 @@ export function phonePage({ contact, history, callCount }) {
   <a class="big call" id="call" href="tel:${tel}">Call now</a>
   <div id="status" role="status"></div>
   <div id="finish" class="finish hidden">
-    <div class="ftitle">How did the call go?</div>
+    <div class="ftitle">How did the call go? <button id="dismiss" class="dismiss" type="button" aria-label="Dismiss">×</button></div>
     <div class="frow">
       <label for="outcome">Outcome</label>
       <select id="outcome">
@@ -137,6 +138,7 @@ export function phonePage({ contact, history, callCount }) {
   var nextCallEl = document.getElementById('nextcall');
   var saveBtn = document.getElementById('save');
   var nocBtn = document.getElementById('noc');
+  var dismissBtn = document.getElementById('dismiss');
   var pending = 0;
   var KEY_T = 'gc_start_' + token;
 
@@ -244,11 +246,15 @@ export function phonePage({ contact, history, callCount }) {
     saveCall(outcomeEl.value === 'no-answer' ? 'no-answer' : 'completed', secs);
   });
 
-  nocBtn.addEventListener('click', function () {
-    if (outcomeEl) outcomeEl.value = 'no-answer';
-    if (durEl) durEl.value = '0';
-    saveCall('no-answer', 0);
-  });
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', function () {
+      try { sessionStorage.removeItem(KEY_T); } catch (e) {}
+      pending = 0;
+      finishEl.classList.add('hidden');
+      statusEl.style.color = '#6b7690';
+      statusEl.textContent = 'Dismissed. The call was not saved.';
+    });
+  }
 
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') showFinish();

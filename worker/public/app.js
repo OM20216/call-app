@@ -87,7 +87,6 @@ function enterApp(user) {
       callingMode = s.callingMode === 'twilio' ? 'twilio' : 'direct';
       $('#mode-note').classList.toggle('hidden', callingMode !== 'direct');
       setMe(me);
-      applyAdminVisibility();
     })
     .catch(() => {});
 }
@@ -104,10 +103,6 @@ function setMe(user) {
     $('#mobile-form').classList.toggle('hidden', !!user.mobile);
   }
   $('#mobile-input').value = user.mobile || '';
-}
-
-function applyAdminVisibility() {
-  $$('.admin-only').forEach((el) => el.classList.toggle('hidden', !isAdmin));
 }
 
 // Login is handled by the inline onclick="doLogin()" on the Sign in button.
@@ -140,8 +135,6 @@ function switchTab(name) {
   $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   $$('.section').forEach((s) => s.classList.toggle('hidden', s.id !== `section-${name}`));
   if (name === 'callbacks') loadCallbacks();
-  if (name === 'team') loadTeam();
-  if (name === 'reports') loadReports();
 }
 
 $$('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
@@ -523,121 +516,6 @@ $('#callbacks').addEventListener('click', (e) => {
   if (callBtn) placeCall(callBtn.dataset.call, callBtn);
   if (moreBtn) openMore(moreBtn.dataset.more);
 });
-
-/* ------------------------------------------------------------------ */
-/* team (admin)                                                        */
-/* ------------------------------------------------------------------ */
-
-async function loadTeam() {
-  if (!isAdmin) return;
-  try {
-    const d = await api('/api/users');
-    const list = $('#users');
-    list.innerHTML = (d.users || [])
-      .map(
-        (u) => `
-      <li>
-        <div class="info">
-          <div class="name">${esc(u.fullName)} <span class="badge">${esc(u.role)}</span></div>
-          <div class="meta">${esc(u.email)}${u.mobile ? ' · ' + esc(u.mobile) : ''}</div>
-        </div>
-        <button class="btn ghost sm" data-reset="${u.id}" type="button">Reset password</button>
-        ${u.id !== me.id ? `<button class="btn danger-link sm" data-deluser="${u.id}" type="button">Remove</button>` : ''}
-      </li>`,
-      )
-      .join('');
-  } catch (err) {
-    toast(err.message, true);
-  }
-}
-
-$('#add-user-open').addEventListener('click', () => {
-  openModal(`
-    <h3>Add recruiter</h3>
-    <form id="user-form" class="form">
-      <label>Full name<input name="fullName" required /></label>
-      <label>Email<input name="email" type="email" required /></label>
-      <label>Password<input name="password" type="password" required minlength="6" /></label>
-      <label>Mobile<input name="mobile" type="tel" /></label>
-      <label>Role<select name="role"><option value="recruiter">Recruiter</option><option value="admin">Admin</option></select></label>
-      <button class="btn primary" type="submit">Create</button>
-    </form>`);
-  $('#user-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = e.target;
-    try {
-      await api('/api/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          fullName: f.fullName.value,
-          email: f.email.value,
-          password: f.password.value,
-          mobile: f.mobile.value,
-          role: f.role.value,
-        }),
-      });
-      toast('Recruiter created.');
-      closeModal();
-      loadTeam();
-    } catch (err) {
-      toast(err.message, true);
-    }
-  });
-});
-
-document.addEventListener('click', async (e) => {
-  const resetBtn = e.target.closest('[data-reset]');
-  const delBtn = e.target.closest('[data-deluser]');
-  if (resetBtn) {
-    const id = resetBtn.dataset.reset;
-    const pw = prompt('New password (min 6 chars):');
-    if (!pw) return;
-    try {
-      await api(`/api/users/${id}/password`, { method: 'POST', body: JSON.stringify({ password: pw }) });
-      toast('Password reset.');
-    } catch (err) {
-      toast(err.message, true);
-    }
-  }
-  if (delBtn) {
-    const id = delBtn.dataset.deluser;
-    if (!confirm('Remove this user? Their contacts will be deleted.')) return;
-    try {
-      await api(`/api/users/${id}`, { method: 'DELETE' });
-      toast('Removed.');
-      loadTeam();
-    } catch (err) {
-      toast(err.message, true);
-    }
-  }
-});
-
-/* ------------------------------------------------------------------ */
-/* reports (admin)                                                     */
-/* ------------------------------------------------------------------ */
-
-async function loadReports() {
-  if (!isAdmin) return;
-  try {
-    const d = await api('/api/reports');
-    $('#report-totals').innerHTML = `
-      <strong>Totals:</strong> ${d.totals.contacts} contacts · ${d.totals.calls} calls · ${fmtDur(d.totals.totalSeconds)} talk time`;
-    const recruiters = d.recruiters || [];
-    $('#report-recruiters').innerHTML = recruiters.length
-      ? `<table class="report-table"><thead><tr><th>Name</th><th>Role</th><th>Contacts</th><th>Calls</th><th>Answered</th><th>Missed</th><th>Talk</th></tr></thead><tbody>
-        ${recruiters.map((r) => `<tr><td>${esc(r.name)}</td><td>${esc(r.role)}</td><td>${r.contacts}</td><td>${r.calls}</td><td>${r.answered}</td><td>${r.missed}</td><td>${fmtDur(r.totalSeconds)}</td></tr>`).join('')}
-        </tbody></table>`
-      : '<p class="muted small">No recruiters yet.</p>';
-    const daily = d.daily || [];
-    $('#report-daily').innerHTML = daily.length
-      ? `<table class="report-table"><thead><tr><th>Day</th><th>Calls</th></tr></thead><tbody>
-        ${daily.map((x) => `<tr><td>${esc(x.day)}</td><td>${x.calls}</td></tr>`).join('')}
-        </tbody></table>`
-      : '<p class="muted small">No calls in the last 14 days.</p>';
-  } catch (err) {
-    toast(err.message, true);
-  }
-}
 
 /* ------------------------------------------------------------------ */
 /* csv export                                                          */

@@ -35,8 +35,6 @@
       <nav id="tabs" class="tabs">
         <button class="tab active" data-tab="contacts" type="button">Contacts</button>
         <button class="tab" data-tab="callbacks" type="button">Callbacks</button>
-        <button class="tab admin-only" data-tab="team" type="button">Team</button>
-        <button class="tab admin-only" data-tab="reports" type="button">Reports</button>
       </nav>
 
       <!-- Shown until the HR has saved their mobile number -->
@@ -74,20 +72,6 @@
         <p class="muted small">Contacts whose last call was not answered, or with a scheduled follow-up.</p>
         <ul id="callbacks" class="list"></ul>
         <div id="callbacks-empty" class="empty hidden"><p>No callbacks right now.</p></div>
-      </section>
-
-      <section id="section-team" class="section hidden">
-        <div class="head"><h2>Team</h2><button id="add-user-open" class="btn primary" type="button">+ Add recruiter</button></div>
-        <ul id="users" class="list"></ul>
-      </section>
-
-      <section id="section-reports" class="section hidden">
-        <div class="head"><h2>Reports</h2></div>
-        <div id="report-totals" class="card" style="margin-bottom:12px;"></div>
-        <h3>Per recruiter</h3>
-        <div id="report-recruiters"></div>
-        <h3 style="margin-top:16px;">Daily calls (last 14 days)</h3>
-        <div id="report-daily"></div>
       </section>
     </main>
   </div>

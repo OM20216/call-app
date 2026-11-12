@@ -140,9 +140,12 @@ main { padding: 20px 16px 60px; max-width: 720px; margin: 0 auto; }
 .modal-card h4 { margin: 14px 0 6px; font-size: 15px; }
 .modal-card img.qr { width: 200px; height: 200px; display: block; margin: 16px auto 4px; }
 .close {
-  position: absolute; top: 10px; right: 12px; font-size: 26px; line-height: 1;
-  background: none; border: 0; color: var(--muted); cursor: pointer;
+  position: absolute; top: 8px; right: 10px; font-size: 28px; line-height: 1;
+  background: #f1f3f9; border: 1px solid var(--line); border-radius: 8px;
+  color: var(--ink); cursor: pointer; width: 36px; height: 36px;
+  display: grid; place-items: center;
 }
+.close:hover { background: #e3e8f2; }
 .history { list-style: none; margin: 0; padding: 0; font-size: 14px; color: var(--muted); }
 .history li { padding: 3px 0; border-bottom: 1px solid var(--line); }
 .history-time { font-weight: 600; color: var(--ink); }

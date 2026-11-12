@@ -32,6 +32,13 @@
         <b>Call now</b>. Your phone places the call on its own plan — no per-minute charges.
       </p>
 
+      <nav id="tabs" class="tabs">
+        <button class="tab active" data-tab="contacts" type="button">Contacts</button>
+        <button class="tab" data-tab="callbacks" type="button">Callbacks</button>
+        <button class="tab admin-only" data-tab="team" type="button">Team</button>
+        <button class="tab admin-only" data-tab="reports" type="button">Reports</button>
+      </nav>
+
       <!-- Shown until the HR has saved their mobile number -->
       <form id="mobile-form" class="card setup hidden">
         <h2>First, your mobile number</h2>
@@ -43,17 +50,45 @@
         <p id="mobile-error" class="error"></p>
       </form>
 
-      <div class="head">
-        <h2>My contacts</h2>
-        <button id="add-open" class="btn primary" type="button">+ Add person</button>
-      </div>
-      <input id="filter" class="search hidden" type="search" placeholder="Find a contact…" />
+      <section id="section-contacts" class="section">
+        <div class="head">
+          <h2>My contacts</h2>
+          <div class="head-actions">
+            <button id="export-csv" class="btn ghost sm" type="button">Export CSV</button>
+            <button id="add-open" class="btn primary" type="button">+ Add person</button>
+          </div>
+        </div>
+        <input id="filter" class="search" type="search" placeholder="Find a contact…" />
+        <ul id="contacts" class="list"></ul>
+        <div id="load-more-wrap" class="center hidden" style="margin-top:12px;">
+          <button id="load-more" class="btn ghost" type="button">Load more</button>
+        </div>
+        <div id="empty" class="empty hidden">
+          <p>You have no contacts yet.</p>
+          <button class="btn primary" data-action="add-open" type="button">+ Add your first person</button>
+        </div>
+      </section>
 
-      <ul id="contacts" class="list"></ul>
-      <div id="empty" class="empty hidden">
-        <p>You have no contacts yet.</p>
-        <button class="btn primary" type="button" data-action="add-open">+ Add your first person</button>
-      </div>
+      <section id="section-callbacks" class="section hidden">
+        <div class="head"><h2>Callbacks</h2></div>
+        <p class="muted small">Contacts whose last call was not answered, or with a scheduled follow-up.</p>
+        <ul id="callbacks" class="list"></ul>
+        <div id="callbacks-empty" class="empty hidden"><p>No callbacks right now.</p></div>
+      </section>
+
+      <section id="section-team" class="section hidden">
+        <div class="head"><h2>Team</h2><button id="add-user-open" class="btn primary" type="button">+ Add recruiter</button></div>
+        <ul id="users" class="list"></ul>
+      </section>
+
+      <section id="section-reports" class="section hidden">
+        <div class="head"><h2>Reports</h2></div>
+        <div id="report-totals" class="card" style="margin-bottom:12px;"></div>
+        <h3>Per recruiter</h3>
+        <div id="report-recruiters"></div>
+        <h3 style="margin-top:16px;">Daily calls (last 14 days)</h3>
+        <div id="report-daily"></div>
+      </section>
     </main>
   </div>
 

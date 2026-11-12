@@ -21,7 +21,17 @@ body {
   color: var(--ink);
 }
 
-.hidden { display: none !important; }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab { background: #fff; border: 1px solid var(--line); color: var(--ink); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.tab.admin-only.hidden { display: none; }
+.head-actions { display: flex; gap: 8px; align-items: center; }
+.form { display: flex; flex-direction: column; gap: 10px; }
+.row-actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+.report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.report-table th, .report-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+.report-table th { background: #eceef9; color: var(--brand-dark); font-weight: 700; }
+.section { margin-top: 4px; }
 .muted { color: var(--muted); }
 .small { font-size: 14px; }
 .center { text-align: center; }

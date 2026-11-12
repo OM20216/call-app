@@ -81,7 +81,8 @@ export function phonePage({ contact, history, callCount }) {
   .finish.hidden { display:none; }
   .ftitle { font-weight:700; margin-bottom:10px; }
   .frow { display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:14px; color:#41506b; }
-  .frow input { width:96px; padding:8px; border:1px solid #cfd9ea; border-radius:8px; font-size:15px; }
+  .frow input, .frow select, .frow textarea { width:100%; padding:8px; border:1px solid #cfd9ea; border-radius:8px; font-size:15px; font:inherit; }
+  .frow textarea { resize: vertical; min-height: 44px; }
   .fbtns { display:flex; gap:10px; }
   .fbtns button { flex:1; padding:12px; border-radius:10px; border:1px solid transparent; font-size:15px; font-weight:600; cursor:pointer; }
   .fbtns .go { background:#303090; color:#fff; }
@@ -97,8 +98,26 @@ export function phonePage({ contact, history, callCount }) {
   <div id="finish" class="finish hidden">
     <div class="ftitle">How did the call go?</div>
     <div class="frow">
+      <label for="outcome">Outcome</label>
+      <select id="outcome">
+        <option value="completed">Answered / completed</option>
+        <option value="no-answer">Didn't connect</option>
+        <option value="busy">Busy</option>
+        <option value="wrong-number">Wrong number</option>
+        <option value="failed">Failed</option>
+      </select>
+    </div>
+    <div class="frow">
       <label for="dur">Talk time (seconds)</label>
       <input id="dur" type="number" min="0" step="1" inputmode="numeric" />
+    </div>
+    <div class="frow">
+      <label for="notes">Notes</label>
+      <textarea id="notes" rows="2" placeholder="Optional notes…"></textarea>
+    </div>
+    <div class="frow">
+      <label for="nextcall">Next call date</label>
+      <input id="nextcall" type="date" />
     </div>
     <div class="fbtns">
       <button id="save" class="go" type="button">Save call</button>
@@ -113,6 +132,9 @@ export function phonePage({ contact, history, callCount }) {
   var callBtn = document.getElementById('call');
   var finishEl = document.getElementById('finish');
   var durEl = document.getElementById('dur');
+  var outcomeEl = document.getElementById('outcome');
+  var notesEl = document.getElementById('notes');
+  var nextCallEl = document.getElementById('nextcall');
   var saveBtn = document.getElementById('save');
   var nocBtn = document.getElementById('noc');
   var pending = 0;
@@ -161,6 +183,9 @@ export function phonePage({ contact, history, callCount }) {
     }
     pending = start;
     durEl.value = String(Math.max(0, secs));
+    if (outcomeEl) outcomeEl.value = 'completed';
+    if (notesEl) notesEl.value = '';
+    if (nextCallEl) nextCallEl.value = '';
     finishEl.classList.remove('hidden');
     statusEl.style.color = '#303090';
     statusEl.textContent = 'Call finished? Check the talk time and save.';
@@ -173,11 +198,20 @@ export function phonePage({ contact, history, callCount }) {
     nocBtn.disabled = true;
     statusEl.style.color = '#303090';
     statusEl.textContent = 'Saving…';
+    const outcome = (outcomeEl && outcomeEl.value) || status;
+    const notes = notesEl ? notesEl.value.trim() : '';
+    const nextCallDate = nextCallEl && nextCallEl.value ? nextCallEl.value : null;
     try {
       var r = await fetch('/api/public/' + token + '/call/finish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration: seconds, status: status })
+        body: JSON.stringify({
+          duration: seconds,
+          status: status,
+          outcome: outcome,
+          notes: notes,
+          nextCallDate: nextCallDate,
+        })
       });
       if (r.ok) {
         try { sessionStorage.removeItem(KEY_T); } catch (e) {}
@@ -193,18 +227,26 @@ export function phonePage({ contact, history, callCount }) {
     }
   }
 
+  outcomeEl.addEventListener('change', function () {
+    if (outcomeEl.value === 'no-answer') {
+      durEl.value = '0';
+    }
+  });
+
   saveBtn.addEventListener('click', function () {
     var secs = Math.max(0, Math.round(Number(durEl.value) || 0));
-    if (secs <= 0) {
+    if (secs <= 0 && outcomeEl.value !== 'no-answer') {
       durEl.focus();
       statusEl.style.color = '#b4483d';
-      statusEl.textContent = 'Enter the talk time in seconds, or tap “Didn’t connect”.';
+      statusEl.textContent = 'Enter the talk time in seconds, or set outcome to “Didn’t connect”.';
       return;
     }
-    saveCall('completed', secs);
+    saveCall(outcomeEl.value === 'no-answer' ? 'no-answer' : 'completed', secs);
   });
 
   nocBtn.addEventListener('click', function () {
+    if (outcomeEl) outcomeEl.value = 'no-answer';
+    if (durEl) durEl.value = '0';
     saveCall('no-answer', 0);
   });
 

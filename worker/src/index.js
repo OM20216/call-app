@@ -11,6 +11,11 @@ import { phonePage } from './phone.js';
 
 const num = (v) => Number(v ?? 0);
 const cleanPhone = (v) => String(v || '').replace(/[^+\d]/g, '');
+const csvCell = (v) => {
+  const s = String(v ?? '');
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+};
 
 const escapeHtml = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -181,6 +186,9 @@ const contactJson = (row) => ({
   email: row.email,
   jobTitle: row.job_title,
   token: row.public_token,
+  ownerId: num(row.owner_id),
+  ownerName: row.owner_name || null,
+  ownerEmail: row.owner_email || null,
   callCount: num(row.call_count ?? 0),
   lastCalled: row.last_called || null,
   lastAnsweredAt: row.last_answered_at || null,
@@ -190,13 +198,15 @@ const contactJson = (row) => ({
 });
 
 const CONTACT_SELECT = `SELECT c.*,
+        u.full_name AS owner_name,
+        u.email AS owner_email,
         (SELECT COUNT(*) FROM call_attempts a WHERE a.contact_id = c.id) AS call_count,
         (SELECT MAX(created_at) FROM call_attempts a WHERE a.contact_id = c.id) AS last_called,
         (SELECT MAX(answered_at) FROM call_attempts a WHERE a.contact_id = c.id AND a.answered_at IS NOT NULL) AS last_answered_at,
         (SELECT duration FROM call_attempts a WHERE a.contact_id = c.id ORDER BY a.id DESC LIMIT 1) AS last_duration,
         (SELECT ended_at FROM call_attempts a WHERE a.contact_id = c.id ORDER BY a.id DESC LIMIT 1) AS last_ended_at,
         (SELECT COALESCE(SUM(duration), 0) FROM call_attempts a WHERE a.contact_id = c.id) AS total_seconds
-   FROM contacts c`;
+   FROM contacts c LEFT JOIN hr_users u ON u.id = c.owner_id`;
 
 /* ------------------------------------------------------------------ */
 /* worker entry                                                        */
@@ -293,12 +303,34 @@ export default {
       /* ---------------- my contacts ---------------- */
       if (path === '/api/contacts' && method === 'GET') {
         if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        const q = String(url.searchParams.get('q') || '').trim().toLowerCase();
+        const page = Math.max(1, num(url.searchParams.get('page')) || 1);
+        const limit = Math.min(200, Math.max(1, num(url.searchParams.get('limit')) || 50));
+        const offset = (page - 1) * limit;
+        const allFlag = url.searchParams.get('all') === '1' && user.role === 'admin';
+        let where = allFlag ? '1=1' : 'c.owner_id = ?';
+        const params = allFlag ? [] : [user.id];
+        if (q) {
+          where += ' AND (LOWER(c.name) LIKE ? OR c.phone LIKE ? OR LOWER(c.email) LIKE ? OR LOWER(c.job_title) LIKE ?)';
+          const like = `%${q}%`;
+          params.push(like, like, like, like);
+        }
+        const totalRow = await first(env, `SELECT COUNT(*) AS n FROM contacts c WHERE ${where}`, ...params);
+        const total = num(totalRow?.n);
         const rows = await all(
           env,
-          `${CONTACT_SELECT} WHERE c.owner_id = ? ORDER BY c.name COLLATE NOCASE`,
-          user.id,
+          `${CONTACT_SELECT} WHERE ${where} ORDER BY c.name COLLATE NOCASE LIMIT ? OFFSET ?`,
+          ...params,
+          limit,
+          offset,
         );
-        return json(request, { contacts: rows.map(contactJson) });
+        return json(request, {
+          contacts: rows.map(contactJson),
+          total,
+          page,
+          limit,
+          hasMore: offset + rows.length < total,
+        });
       }
 
       if (path === '/api/contacts' && method === 'POST') {
@@ -336,7 +368,7 @@ export default {
         if (!row) return json(request, { error: 'Not found.' }, 404);
         const history = await all(
           env,
-          `SELECT id, contact_id, hr_id, status, provider_sid, duration, answered_at, ended_at, created_at
+          `SELECT id, contact_id, hr_id, status, provider_sid, duration, answered_at, ended_at, outcome, notes, next_call_date, created_at
              FROM call_attempts
             WHERE contact_id = ?
             ORDER BY id DESC
@@ -346,7 +378,37 @@ export default {
         return json(request, { contact: contactJson(row), history });
       }
 
-      if (m && method === 'DELETE') {
+      if (m && method === 'PUT') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        const b = await readBody(request);
+        const row = await first(env, 'SELECT * FROM contacts WHERE id = ? AND owner_id = ?', num(m[1]), user.id);
+        if (!row) return json(request, { error: 'Not found.' }, 404);
+        const name = b.name !== undefined ? String(b.name).trim() : row.name;
+        const phone = b.phone !== undefined ? cleanPhone(b.phone) : row.phone;
+        const email = b.email !== undefined ? String(b.email).trim() : row.email;
+        const jobTitle = b.jobTitle !== undefined ? String(b.jobTitle).trim() : row.job_title;
+        if (!name || !phone) return json(request, { error: 'Name and phone are required.' }, 400);
+        try {
+          await run(
+            env,
+            'UPDATE contacts SET name = ?, phone = ?, email = ?, job_title = ? WHERE id = ? AND owner_id = ?',
+            name,
+            phone,
+            email,
+            jobTitle,
+            num(m[1]),
+            user.id,
+          );
+          const updated = await first(env, `${CONTACT_SELECT} WHERE c.id = ? AND c.owner_id = ?`, num(m[1]), user.id);
+          return json(request, { contact: contactJson(updated) });
+        } catch (e) {
+          if (String(e.message).includes('UNIQUE')) {
+            return json(request, { error: 'That number is already in your list.' }, 409);
+          }
+          return json(request, { error: e.message }, 500);
+        }
+      }
+        if (m && method === 'DELETE') {
         if (!user) return json(request, { error: 'Not signed in.' }, 401);
         const info = await run(env, 'DELETE FROM contacts WHERE id = ? AND owner_id = ?', num(m[1]), user.id);
         if (!info.meta || !info.meta.changes) return json(request, { error: 'Not found.' }, 404);
@@ -404,6 +466,13 @@ export default {
       }
 
       if (path === '/api/sync-from-hrms' && method === 'POST') {
+        // Optional shared secret: if SYNC_API_KEY is configured, require it.
+        if (env.SYNC_API_KEY) {
+          const provided = request.headers.get('X-API-Key') || '';
+          if (provided !== env.SYNC_API_KEY) {
+            return json(request, { error: 'Invalid or missing API key.' }, 401);
+          }
+        }
         const b = await readBody(request);
         const candidateId = String(b.candidateId || '').trim();
         const name = String(b.candidateName || b.fullName || '').trim();
@@ -667,6 +736,9 @@ export default {
         const b = await readBody(request);
         const duration = Math.max(0, Math.round(Number(b.duration) || 0));
         const status = String(b.status || '').trim() || null;
+        const outcome = String(b.outcome || b.status || '').trim() || status;
+        const notes = b.notes !== undefined ? String(b.notes).trim() : null;
+        const nextCallDate = b.nextCallDate !== undefined ? String(b.nextCallDate).trim() || null : null;
         // Direct-dial has no provider telling us when the candidate answered.
         // We know the talk time, so derive pickup time as (now - duration).
         const answeredIso =
@@ -677,17 +749,23 @@ export default {
           env,
           `UPDATE call_attempts
               SET duration = ?, ended_at = ?, status = COALESCE(?, status),
-                  answered_at = COALESCE(?, answered_at)
+                  answered_at = COALESCE(?, answered_at),
+                  outcome = COALESCE(?, outcome),
+                  notes = COALESCE(?, notes),
+                  next_call_date = COALESCE(?, next_call_date)
             WHERE id = ?`,
           duration,
           new Date().toISOString(),
           status,
           answeredIso,
+          outcome,
+          notes,
+          nextCallDate,
           attemptId,
         );
         const row = await first(
           env,
-          `SELECT id, status, provider_sid, duration, answered_at, ended_at, created_at
+          `SELECT id, status, provider_sid, duration, answered_at, ended_at, outcome, notes, next_call_date, created_at
              FROM call_attempts WHERE id = ?`,
           attemptId,
         );
@@ -702,6 +780,9 @@ export default {
         const b = await readBody(request);
         const duration = Math.max(0, Math.round(Number(b.duration) || 0));
         const status = String(b.status || '').trim() || null;
+        const outcome = String(b.outcome || b.status || '').trim() || status;
+        const notes = b.notes !== undefined ? String(b.notes).trim() : null;
+        const nextCallDate = b.nextCallDate !== undefined ? String(b.nextCallDate).trim() || null : null;
         const attempt = await first(
           env,
           `SELECT id FROM call_attempts
@@ -711,8 +792,6 @@ export default {
         );
         if (!attempt) return json(request, { error: 'No open call to finish.' }, 404);
 
-        // Same derivation as the per-attempt route: pickup time is unknown
-        // for direct dial, so estimate it from the measured talk time.
         const answeredIso =
           duration > 0 && status !== 'no-answer'
             ? new Date(Date.now() - duration * 1000).toISOString()
@@ -721,12 +800,18 @@ export default {
           env,
           `UPDATE call_attempts
               SET duration = ?, ended_at = ?, status = COALESCE(?, status),
-                  answered_at = COALESCE(?, answered_at)
+                  answered_at = COALESCE(?, answered_at),
+                  outcome = COALESCE(?, outcome),
+                  notes = COALESCE(?, notes),
+                  next_call_date = COALESCE(?, next_call_date)
             WHERE id = ?`,
           duration,
           new Date().toISOString(),
           status,
           answeredIso,
+          outcome,
+          notes,
+          nextCallDate,
           attempt.id,
         );
         return json(request, {
@@ -734,8 +819,184 @@ export default {
           attemptId: num(attempt.id),
           duration,
           status: status || 'direct',
+          outcome: outcome || status || 'direct',
+          notes: notes,
+          nextCallDate: nextCallDate,
           answeredAt: answeredIso,
         });
+      }
+
+      /* ---------------- user management (admin) ---------------- */
+      if (path === '/api/users' && method === 'GET') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        if (user.role !== 'admin') return json(request, { error: 'Admin only.' }, 403);
+        const rows = await all(env, 'SELECT id, email, full_name, mobile, role, created_at FROM hr_users ORDER BY id');
+        return json(request, { users: rows.map((u) => publicUser(u)) });
+      }
+
+      if (path === '/api/users' && method === 'POST') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        if (user.role !== 'admin') return json(request, { error: 'Admin only.' }, 403);
+        const b = await readBody(request);
+        const email = String(b.email || '').trim().toLowerCase();
+        const password = String(b.password || '');
+        const fullName = String(b.fullName || b.name || '').trim();
+        const role = String(b.role || 'recruiter').trim();
+        const mobile = cleanPhone(b.mobile || '');
+        if (!email || !password || !fullName) {
+          return json(request, { error: 'email, password and fullName are required.' }, 400);
+        }
+        if (password.length < 6) return json(request, { error: 'Password must be at least 6 characters.' }, 400);
+        if (!['admin', 'recruiter'].includes(role)) return json(request, { error: 'role must be admin or recruiter.' }, 400);
+        try {
+          const info = await run(
+            env,
+            'INSERT INTO hr_users (email, password_hash, full_name, mobile, role) VALUES (?, ?, ?, ?, ?)',
+            email,
+            await hashPassword(password),
+            fullName,
+            mobile,
+            role,
+          );
+          const created = await first(env, 'SELECT * FROM hr_users WHERE id = ?', num(info.meta.last_row_id));
+          return json(request, { user: publicUser(created) }, 201);
+        } catch (e) {
+          if (String(e.message).includes('UNIQUE')) return json(request, { error: 'That email is already used.' }, 409);
+          return json(request, { error: e.message }, 500);
+        }
+      }
+
+      m = path.match(/^\/api\/users\/(\d+)\/password$/);
+      if (m && method === 'POST') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        const targetId = num(m[1]);
+        if (user.role !== 'admin' && user.id !== targetId) {
+          return json(request, { error: 'Not allowed.' }, 403);
+        }
+        const b = await readBody(request);
+        const password = String(b.password || '');
+        if (password.length < 6) return json(request, { error: 'Password must be at least 6 characters.' }, 400);
+        const target = await first(env, 'SELECT id FROM hr_users WHERE id = ?', targetId);
+        if (!target) return json(request, { error: 'Not found.' }, 404);
+        await run(env, 'UPDATE hr_users SET password_hash = ? WHERE id = ?', await hashPassword(password), targetId);
+        return json(request, { ok: true });
+      }
+
+      m = path.match(/^\/api\/users\/(\d+)$/);
+      if (m && method === 'DELETE') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        if (user.role !== 'admin') return json(request, { error: 'Admin only.' }, 403);
+        const targetId = num(m[1]);
+        if (targetId === user.id) return json(request, { error: 'Cannot delete yourself.' }, 400);
+        const info = await run(env, 'DELETE FROM hr_users WHERE id = ?', targetId);
+        if (!info.meta || !info.meta.changes) return json(request, { error: 'Not found.' }, 404);
+        return json(request, { ok: true });
+      }
+
+      /* ---------------- callbacks (missed / follow-ups) ---------------- */
+      if (path === '/api/callbacks' && method === 'GET') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        const isAdmin = user.role === 'admin';
+        const ownerClause = isAdmin ? '1=1' : 'c.owner_id = ?';
+        const params = isAdmin ? [] : [user.id];
+        const rows = await all(
+          env,
+          `${CONTACT_SELECT}
+             WHERE ${ownerClause}
+               AND EXISTS (
+                 SELECT 1 FROM call_attempts a
+                  WHERE a.contact_id = c.id
+                    AND (a.status IN ('no-answer','busy','failed')
+                         OR (a.next_call_date IS NOT NULL AND a.next_call_date <= date('now'))
+                         OR a.outcome IN ('no-answer','busy','failed'))
+               )
+             ORDER BY c.name COLLATE NOCASE`,
+          ...params,
+        );
+        return json(request, { contacts: rows.map(contactJson) });
+      }
+
+      /* ---------------- reports (admin) ---------------- */
+      if (path === '/api/reports' && method === 'GET') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        if (user.role !== 'admin') return json(request, { error: 'Admin only.' }, 403);
+        const recruiters = await all(
+          env,
+          `SELECT u.id, u.full_name, u.email, u.role,
+                  (SELECT COUNT(*) FROM contacts c WHERE c.owner_id = u.id) AS contacts,
+                  (SELECT COUNT(*) FROM call_attempts a WHERE a.hr_id = u.id) AS calls,
+                  (SELECT COALESCE(SUM(duration),0) FROM call_attempts a WHERE a.hr_id = u.id) AS total_seconds,
+                  (SELECT COUNT(*) FROM call_attempts a WHERE a.hr_id = u.id AND (a.status='completed' OR a.outcome='completed')) AS answered,
+                  (SELECT COUNT(*) FROM call_attempts a WHERE a.hr_id = u.id AND (a.status='no-answer' OR a.outcome='no-answer')) AS missed
+             FROM hr_users u ORDER BY u.id`,
+        );
+        const totals = await first(
+          env,
+          `SELECT (SELECT COUNT(*) FROM contacts) AS contacts,
+                  (SELECT COUNT(*) FROM call_attempts) AS calls,
+                  (SELECT COALESCE(SUM(duration),0) FROM call_attempts) AS total_seconds`,
+        );
+        // daily counts, last 14 days
+        const daily = await all(
+          env,
+          `SELECT date(created_at) AS day, COUNT(*) AS calls
+             FROM call_attempts
+            WHERE created_at >= date('now','-13 days')
+            GROUP BY date(created_at)
+            ORDER BY day`,
+        );
+        return json(request, {
+          recruiters: recruiters.map((r) => ({
+            id: num(r.id),
+            name: r.full_name,
+            email: r.email,
+            role: r.role,
+            contacts: num(r.contacts),
+            calls: num(r.calls),
+            totalSeconds: num(r.total_seconds),
+            answered: num(r.answered),
+            missed: num(r.missed),
+          })),
+          totals: {
+            contacts: num(totals?.contacts),
+            calls: num(totals?.calls),
+            totalSeconds: num(totals?.total_seconds),
+          },
+          daily,
+        });
+      }
+
+      /* ---------------- CSV export ---------------- */
+      if (path === '/api/contacts/export.csv' && method === 'GET') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        const isAdmin = user.role === 'admin';
+        const ownerClause = isAdmin ? '1=1' : 'c.owner_id = ?';
+        const params = isAdmin ? [] : [user.id];
+        const rows = await all(env, `${CONTACT_SELECT} WHERE ${ownerClause} ORDER BY c.name COLLATE NOCASE`, ...params);
+        const header = ['id','name','phone','email','jobTitle','owner','calls','lastCalled','lastDurationSec','totalSeconds','lastAnsweredAt'];
+        const lines = [header.join(',')];
+        for (const r of rows) {
+          const c = contactJson(r);
+          const cells = [
+            c.id,
+            csvCell(c.name),
+            csvCell(c.phone),
+            csvCell(c.email),
+            csvCell(c.jobTitle),
+            csvCell(c.ownerEmail || ''),
+            c.callCount,
+            c.lastCalled || '',
+            c.lastDuration != null ? c.lastDuration : '',
+            c.totalSeconds,
+            c.lastAnsweredAt || '',
+          ];
+          lines.push(cells.join(','));
+        }
+        const csv = lines.join('\n');
+        const headers = corsHeaders(request);
+        headers.set('Content-Type', 'text/csv; charset=utf-8');
+        headers.set('Content-Disposition', 'attachment; filename="contacts.csv"');
+        return new Response(csv, { status: 200, headers });
       }
 
       /* ---------------- QR image ---------------- */
@@ -761,7 +1022,7 @@ export default {
         if (!c) return html(request, '<h1>Contact not found</h1>', 404);
         const history = await all(
           env,
-          `SELECT id, status, provider_sid, duration, answered_at, ended_at, created_at
+          `SELECT id, status, provider_sid, duration, answered_at, ended_at, outcome, notes, next_call_date, created_at
              FROM call_attempts WHERE contact_id = ?
             ORDER BY id DESC LIMIT 20`,
           c.id,

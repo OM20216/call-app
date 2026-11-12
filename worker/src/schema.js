@@ -41,6 +41,9 @@ export const SCHEMA_STATEMENTS = [
     duration     INTEGER,
     answered_at  TEXT,
     ended_at     TEXT,
+    outcome      TEXT,
+    notes        TEXT,
+    next_call_date TEXT,
     created_at   TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
@@ -63,6 +66,9 @@ export const MIGRATIONS = [
   'ALTER TABLE call_attempts ADD COLUMN answered_at TEXT',
   'ALTER TABLE call_attempts ADD COLUMN ended_at TEXT',
   'ALTER TABLE call_attempts ADD COLUMN client_id TEXT',
+  'ALTER TABLE call_attempts ADD COLUMN outcome TEXT',
+  'ALTER TABLE call_attempts ADD COLUMN notes TEXT',
+  'ALTER TABLE call_attempts ADD COLUMN next_call_date TEXT',
   'ALTER TABLE contacts ADD COLUMN crm_candidate_id TEXT',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_attempt_client ON call_attempts(contact_id, client_id)',
 ];

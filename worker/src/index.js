@@ -184,12 +184,18 @@ const contactJson = (row) => ({
   callCount: num(row.call_count ?? 0),
   lastCalled: row.last_called || null,
   lastAnsweredAt: row.last_answered_at || null,
+  lastDuration: row.last_duration != null ? num(row.last_duration) : null,
+  lastEndedAt: row.last_ended_at || null,
+  totalSeconds: num(row.total_seconds ?? 0),
 });
 
 const CONTACT_SELECT = `SELECT c.*,
         (SELECT COUNT(*) FROM call_attempts a WHERE a.contact_id = c.id) AS call_count,
         (SELECT MAX(created_at) FROM call_attempts a WHERE a.contact_id = c.id) AS last_called,
-        (SELECT MAX(answered_at) FROM call_attempts a WHERE a.contact_id = c.id AND a.answered_at IS NOT NULL) AS last_answered_at
+        (SELECT MAX(answered_at) FROM call_attempts a WHERE a.contact_id = c.id AND a.answered_at IS NOT NULL) AS last_answered_at,
+        (SELECT duration FROM call_attempts a WHERE a.contact_id = c.id ORDER BY a.id DESC LIMIT 1) AS last_duration,
+        (SELECT ended_at FROM call_attempts a WHERE a.contact_id = c.id ORDER BY a.id DESC LIMIT 1) AS last_ended_at,
+        (SELECT COALESCE(SUM(duration), 0) FROM call_attempts a WHERE a.contact_id = c.id) AS total_seconds
    FROM contacts c`;
 
 /* ------------------------------------------------------------------ */
@@ -334,7 +340,7 @@ export default {
              FROM call_attempts
             WHERE contact_id = ?
             ORDER BY id DESC
-            LIMIT 20`,
+            LIMIT 50`,
           row.id,
         );
         return json(request, { contact: contactJson(row), history });
@@ -757,7 +763,7 @@ export default {
           env,
           `SELECT id, status, provider_sid, duration, answered_at, ended_at, created_at
              FROM call_attempts WHERE contact_id = ?
-            ORDER BY id DESC LIMIT 10`,
+            ORDER BY id DESC LIMIT 20`,
           c.id,
         );
         return html(request, phonePage({ contact: c, history, callCount: c.call_count }));

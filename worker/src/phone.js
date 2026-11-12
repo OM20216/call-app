@@ -25,6 +25,13 @@ const fmtDur = (v) => {
   const m = Math.floor(s / 60);
   return m ? `${m}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`;
 };
+const fmtWhen = (raw) => {
+  if (!raw) return '';
+  let s = String(raw);
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+};
 
 export function phonePage({ contact, history, callCount }) {
   const tel = String(contact.phone || '').replace(/[^+\d]/g, '');
@@ -37,9 +44,10 @@ export function phonePage({ contact, history, callCount }) {
           const when = h.answered_at || h.created_at;
           const bits = [];
           if (h.duration != null) bits.push(`${fmtDur(h.duration)} talk time`);
-          if (h.answered_at) bits.push('Answered');
-          if (h.duration == null && !h.answered_at) bits.push('Duration not recorded');
-          return `<li><div class="hrow"><span class="hstatus">${escapeHtml(label(h.status))}</span><time class="htime" data-ts="${escapeHtml(when || '')}"></time></div><div class="hsub">${escapeHtml(bits.join(' · '))}</div></li>`;
+          if (h.answered_at) bits.push('Picked up ' + fmtWhen(h.answered_at));
+          if (h.ended_at) bits.push('Hung up ' + fmtWhen(h.ended_at));
+          if (h.duration == null && !h.answered_at) bits.push('Not connected');
+          return `<li><div class="hrow"><span class="hstatus">${escapeHtml(label(h.status))}</span><time class="htime" data-ts="${escapeHtml(when || '')}"></time></div><div class="hsub">${escapeHtml(bits.join(' · '))}</div><div class="hsub mutedsmall">Started ${escapeHtml(fmtWhen(h.created_at))}</div></li>`;
         })
         .join('') +
       `</ul>`
@@ -68,6 +76,7 @@ export function phonePage({ contact, history, callCount }) {
   .hrow { display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:600; }
   .hstatus { background:#eef4ff; color:#2451a8; padding:2px 8px; border-radius:999px; font-size:13px; }
   .hsub { margin-top:4px; font-size:13px; color:#6b7690; }
+  .mutedsmall { font-size:12px; color:#6b7690; margin-top:2px; }
   .finish { margin-top:14px; border:1px solid #d8e4f5; background:#f7faff; border-radius:12px; padding:14px; }
   .finish.hidden { display:none; }
   .ftitle { font-weight:700; margin-bottom:10px; }

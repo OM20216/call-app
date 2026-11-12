@@ -29,6 +29,12 @@ function timeAgo(ts) {
   return `${Math.floor(hrs / 24)} d ago`;
 }
 
+function fmtDur(v) {
+  const s = Math.max(0, Math.round(Number(v) || 0));
+  const m = Math.floor(s / 60);
+  return m ? `${m}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`;
+}
+
 function fmtDateTime(ts) {
   if (!ts) return '—';
   const d = new Date(String(ts).replace(' ', 'T') + 'Z');
@@ -40,7 +46,9 @@ function fmtDateTime(ts) {
 const callText = (c) => {
   if (!c.callCount) return 'Not called yet';
   const answered = c.lastAnsweredAt ? ` · answered ${timeAgo(c.lastAnsweredAt)}` : '';
-  return `Called ${c.callCount} time${c.callCount === 1 ? '' : 's'}${answered}`;
+  const dur = c.lastDuration ? ` · last ${fmtDur(c.lastDuration)}` : '';
+  const total = c.totalSeconds ? ` · total ${fmtDur(c.totalSeconds)}` : '';
+  return `Called ${c.callCount} time${c.callCount === 1 ? '' : 's'}${answered}${dur}${total}`;
 };
 
 let toastTimer;
@@ -254,9 +262,13 @@ async function openMore(id) {
         <div class="history-time">${fmtDateTime(h.answered_at || h.created_at)}</div>
         <div class="history-meta">
           <span class="badge">${esc(h.status || 'unknown')}</span>
-          ${h.answered_at ? `<span class="sid">Answered at ${fmtDateTime(h.answered_at)}</span>` : ''}
-          ${h.provider_sid ? `<span class="sid">SID: ${esc(h.provider_sid)}</span>` : ''}
-          ${h.duration ? `<span class="sid">Dur: ${Math.round(h.duration)}s</span>` : ''}
+          <div class="history-detail">
+            <div>Started: ${fmtDateTime(h.created_at)}</div>
+            <div>Picked up: ${h.answered_at ? fmtDateTime(h.answered_at) : 'not recorded'}</div>
+            <div>Hung up: ${h.ended_at ? fmtDateTime(h.ended_at) : 'not recorded'}</div>
+            <div>Talk time: ${h.duration != null ? fmtDur(h.duration) : 'not recorded'}</div>
+            ${h.provider_sid ? `<div>SID: ${esc(h.provider_sid)}</div>` : ''}
+          </div>
         </div>
       </li>`,
     )
@@ -269,6 +281,7 @@ async function openMore(id) {
     <img class="qr" src="/qr/${c.token}.png" alt="QR code for ${esc(c.name)}" />
     <p class="muted small center">Scan with your phone to call ${esc(c.name)} from it.</p>
     <h4>${callText(c)}</h4>
+    ${c.totalSeconds ? `<p class="muted small">Total talk time: ${fmtDur(c.totalSeconds)}</p>` : ''}
     ${history ? `<ul class="history">${history}</ul>` : `<p class="muted small">No calls yet.</p>`}
     <button class="btn danger-link" id="remove" type="button">Remove from my list</button>`);
 

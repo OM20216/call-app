@@ -12,11 +12,13 @@
  *   PORT              default 4200
  *   HOST              default 0.0.0.0 (all network interfaces)
  *   CALL_DB_FILE      default worker/local/data/call-app.sqlite
- *   PUBLIC_BASE_URL   default: the address the browser used
+ *   PUBLIC_BASE_URL   default: auto-detected office LAN address
+ *   CALL_ACCESS_LOG   "0" disables the per-request log line
  */
 import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
@@ -129,7 +131,34 @@ const ASSETS = {
   },
 };
 
-const env = { DB: new D1(DB_FILE), ASSETS, PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL || '' };
+/**
+ * The LAN IPv4 address phones on the office Wi-Fi can use. Virtual adapters
+ * (WSL / Hyper-V / VirtualBox / VMware) are ignored, as are link-local ones.
+ */
+function detectLanIp() {
+  const found = [];
+  for (const [name, list] of Object.entries(os.networkInterfaces())) {
+    for (const net of list || []) {
+      if (net.family !== 'IPv4' || net.internal) continue;
+      if (net.address.startsWith('169.254.')) continue;
+      const virtual = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|Loopback|Bluetooth/i.test(name);
+      found.push({ address: net.address, score: virtual ? 1 : 0 });
+    }
+  }
+  found.sort((a, b) => a.score - b.score);
+  return found.length ? found[0].address : '';
+}
+
+const LAN_BASE = (() => {
+  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
+  const ip = detectLanIp();
+  return ip ? `http://${ip}:${PORT}` : '';
+})();
+
+// Always hand out the LAN address in QR codes / links, even when the page was
+// opened on 127.0.0.1 or localhost (a phone cannot open those).
+const env = { DB: new D1(DB_FILE), ASSETS, PUBLIC_BASE_URL: LAN_BASE };
+const ACCESS_LOG = process.env.CALL_ACCESS_LOG !== '0';
 
 /* ------------------------------------------------------------------ */
 /* HTTP -> worker fetch                                                */
@@ -172,6 +201,13 @@ const server = http.createServer(async (req, res) => {
     }
   } finally {
     const ms = Date.now() - started;
+    if (ACCESS_LOG) {
+      let route = String(req.url || '');
+      const q = route.indexOf('?');
+      if (q >= 0) route = route.slice(0, q);
+      const ua = String(req.headers['user-agent'] || '').split(' ')[0].slice(0, 40);
+      console.log(`[${new Date().toISOString()}] ${req.method} ${route} ${res.statusCode} ${ms}ms${ua ? ` | ${ua}` : ''}`);
+    }
     if (ms > 1500) console.log(`[slow ${ms}ms] ${req.method} ${req.url}`);
   }
 });

@@ -24,3 +24,9 @@ cloudflared
 .DS_Store
 Thumbs.db
 .vscode/
+# office-hosted copy (worker/local): database, logs, stop flag
+worker/local/data/
+worker/local/logs/
+worker/local/call-app.stop
+*.sqlite-wal
+*.sqlite-shm

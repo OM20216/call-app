@@ -5,14 +5,16 @@ every attempt is stored with status, pickup time, hang-up time, talk duration an
 
 ## Main app (use this)
 
-The permanent app is **`worker/`** (Cloudflare Workers + D1), live at:
+The app runs in **two places**:
 
-**https://hr-call.hr-call-worker.workers.dev**
+| Where | Link | Notes |
+|---|---|---|
+| **This PC (office)** | **http://172.16.0.238:4200** | No cloud, starts with Windows, own SQLite database. Guide: [`worker/local/README.md`](worker/local/README.md) |
+| Cloudflare Worker | https://hr-call.hr-call-worker.workers.dev | Always on; D1 database (separate copy) |
 
-- Login: `admin@example.com` / `Admin@1234` (change after first login)
-- No server to keep running, data persists in D1.
+- Login: `admin@example.com` / `Admin@1234` (change after first login - "Change password" in the top bar)
 - Calling is **direct dial**: the QR page opens a `tel:` link on the HR's phone.
-- Full guide: [`worker/README.md`](worker/README.md)
+- Full API guide: [`worker/README.md`](worker/README.md)
 
 ### Local testing
 

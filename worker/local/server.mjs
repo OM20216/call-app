@@ -141,7 +141,8 @@ function detectLanIp() {
     for (const net of list || []) {
       if (net.family !== 'IPv4' || net.internal) continue;
       if (net.address.startsWith('169.254.')) continue;
-      const virtual = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|Loopback|Bluetooth/i.test(name);
+      if (net.address.startsWith('100.')) continue;
+      const virtual = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|Loopback|Bluetooth|Tailscale/i.test(name);
       found.push({ address: net.address, score: virtual ? 1 : 0 });
     }
   }

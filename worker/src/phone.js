@@ -95,6 +95,7 @@ export function phonePage({ contact, history, callCount }) {
   <div class="count">Called ${count} time${count === 1 ? '' : 's'}</div>
   <div class="phone">${escapeHtml(contact.phone)}</div>
   <a class="big call" id="call" href="tel:${tel}">Call now</a>
+  <div class="muted" style="margin-top:8px;font-size:13px;">Tap <b>Call now</b> to open your dialer. The call is counted from that tap.</div>
   <div id="status" role="status"></div>
   <div id="finish" class="finish hidden">
     <div class="ftitle">How did the call go? <button id="dismiss" class="dismiss" type="button" aria-label="Dismiss">×</button></div>

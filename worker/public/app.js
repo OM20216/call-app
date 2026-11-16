@@ -220,12 +220,12 @@ function renderContacts() {
   $('#load-more-wrap').classList.toggle('hidden', !contactHasMore);
 }
 
-async function loadContacts(reset = false) {
+async function loadContacts(reset = false, silent = false) {
   if (reset) { contacts = []; contactPage = 1; }
   const list = $('#contacts');
   const empty = $('#empty');
   if (empty) empty.classList.add('hidden');
-  if (reset) list.innerHTML = '<li class="muted" style="padding:12px;">Loading contacts…</li>';
+  if (reset && !silent) list.innerHTML = '<li class="muted" style="padding:12px;">Loading contacts…</li>';
   const d = await api(`/api/contacts?q=${encodeURIComponent(contactQuery)}&page=${contactPage}&limit=50`);
   contacts = reset ? d.contacts : contacts.concat(d.contacts);
   contactHasMore = !!d.hasMore;
@@ -570,6 +570,35 @@ $('#callbacks').addEventListener('click', (e) => {
 $('#export-csv').addEventListener('click', () => {
   window.location.href = '/api/contacts/export.csv';
 });
+
+/* ------------------------------------------------------------------ */
+/* keep call counts fresh                                             */
+/* ------------------------------------------------------------------ */
+
+// The call itself happens on the phone, so this page has to look for new
+// attempts instead of waiting for a reload. Refresh quietly every 15 s and
+// whenever the window regains focus.
+async function refreshFromServer() {
+  if (!me || document.hidden) return;
+  if ($('#app-view').classList.contains('hidden')) return;
+  const callbacksVisible = !$('#section-callbacks').classList.contains('hidden');
+  if (callbacksVisible) {
+    await loadCallbacks();
+    return;
+  }
+  const contactsVisible = !$('#section-contacts').classList.contains('hidden');
+  if (!contactsVisible || contactPage !== 1) return;
+  if (document.activeElement === $('#filter')) return; // don't fight typing
+  try {
+    await loadContacts(true, true);
+  } catch { /* keep the old list on a blip */ }
+}
+
+setInterval(refreshFromServer, 15000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshFromServer();
+});
+window.addEventListener('focus', refreshFromServer);
 
 /* ------------------------------------------------------------------ */
 /* init                                                                */

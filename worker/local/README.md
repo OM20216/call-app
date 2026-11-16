@@ -38,6 +38,37 @@ powershell -ExecutionPolicy Bypass -File worker\local\install.ps1 -Uninstall
 Temporary stop: `powershell -File worker\local\watchdog.ps1 stop` (the watchdog keeps running but
 the stop flag ends `run.ps1`; remove `worker\local\call-app.stop` and start again to resume).
 
+## Mobile data access (phone not on office Wi-Fi)
+
+The office link (172.16.0.238) only works on the office Wi-Fi. To scan a QR code from
+a phone that is on mobile data, point the app at a reachable address:
+
+1. Set the address in `worker/local/public-base-url.txt` (one line, e.g.
+   `http://desktop-bu8f10s.tail339620.ts.net:4200` for Tailscale, or an ngrok URL).
+   `server.mjs` reads this file on startup (env var `PUBLIC_BASE_URL` also works and
+   takes precedence).
+2. Restart the service (kill the process on port 4200 and let run.ps1 start it again).
+3. QR codes generated afterwards use the new address.
+
+### Option A - Tailscale (recommended, stable, free)
+
+- Install Tailscale on this PC and on the phone, sign in with the same account.
+- The PC gets a stable address like `http://desktop-bu8f10s.tail339620.ts.net:4200`.
+- Put that in `public-base-url.txt`, restart. The phone (on mobile data, Tailscale on)
+  can now open every QR code.
+
+### Option B - ngrok (no app on the phone, but needs a free account)
+
+- Create a free account, run `ngrok config add-authtoken <token>`.
+- Run `ngrok http 4200`, copy the `https://....ngrok-free.app` URL into
+  `public-base-url.txt`, restart.
+- The URL changes each run unless you claim a free static domain in the ngrok dashboard.
+
+### Reverting to office Wi-Fi only
+
+Delete `worker/local/public-base-url.txt` (or empty it) and restart. The app goes back to
+auto-detecting the office LAN IP.
+
 ## Check it is alive
 
 ```powershell

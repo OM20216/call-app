@@ -28,5 +28,6 @@ Thumbs.db
 worker/local/data/
 worker/local/logs/
 worker/local/call-app.stop
+worker/local/public-base-url.txt
 *.sqlite-wal
 *.sqlite-shm

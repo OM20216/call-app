@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Office-hosted Graph Call server.
  *
  * Runs the exact same Worker code (worker/src/index.js) on Node, with a local
@@ -150,7 +150,9 @@ function detectLanIp() {
 }
 
 const LAN_BASE = (() => {
-  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
+  const fileV = (() => { try { return fs.readFileSync(path.join(HERE, "public-base-url.txt"), "utf8").split(/\r?\n/).map((x) => x.trim()).find(Boolean) || ""; } catch { return ""; } })();
+  const chosen = (process.env.PUBLIC_BASE_URL || fileV || "").trim();
+  if (chosen) return chosen.replace(/\/+$/, "");
   const ip = detectLanIp();
   return ip ? `http://${ip}:${PORT}` : '';
 })();

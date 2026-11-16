@@ -125,6 +125,45 @@ function ok(name, cond, extra = '') {
   ok('save mobile', r.status === 200 && r.data.user.mobile === '+919000011111', JSON.stringify(r.data));
 }
 
+// 3b. self-service password change
+{
+  const wrong = await call('/api/me/password', {
+    method: 'POST',
+    body: { currentPassword: 'nope', newPassword: 'NewPass@123' },
+  });
+  ok('wrong current password rejected', wrong.status === 400, `got ${wrong.status}`);
+
+  const short = await call('/api/me/password', {
+    method: 'POST',
+    body: { currentPassword: 'Admin@1234', newPassword: '123' },
+  });
+  ok('short new password rejected', short.status === 400, `got ${short.status}`);
+
+  const same = await call('/api/me/password', {
+    method: 'POST',
+    body: { currentPassword: 'Admin@1234', newPassword: 'Admin@1234' },
+  });
+  ok('same password rejected', same.status === 400, `got ${same.status}`);
+
+  const changed = await call('/api/me/password', {
+    method: 'POST',
+    body: { currentPassword: 'Admin@1234', newPassword: 'NewPass@123' },
+  });
+  ok('change own password', changed.status === 200 && changed.data.ok, JSON.stringify(changed.data));
+
+  const relogin = await call('/api/login', {
+    method: 'POST',
+    body: { email: 'admin@example.com', password: 'NewPass@123' },
+  });
+  ok('login with new password', relogin.status === 200, `got ${relogin.status}`);
+
+  const restore = await call('/api/me/password', {
+    method: 'POST',
+    body: { currentPassword: 'NewPass@123', newPassword: 'Admin@1234' },
+  });
+  ok('restore seeded password', restore.status === 200 && restore.data.ok, JSON.stringify(restore.data));
+}
+
 // 4. contacts CRUD
 let contactId = 0;
 {

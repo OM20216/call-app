@@ -119,6 +119,46 @@ $('#logout').addEventListener('click', async () => {
   location.reload();
 });
 
+$('#change-password').addEventListener('click', () => {
+  openModal(`
+    <h3>Change password</h3>
+    <form id="password-form" class="form">
+      <label>Current password<input name="currentPassword" type="password" autocomplete="current-password" required /></label>
+      <label>New password<input name="newPassword" type="password" autocomplete="new-password" required minlength="6" /></label>
+      <label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="6" /></label>
+      <p id="password-error" class="error"></p>
+      <button class="btn primary" type="submit">Save new password</button>
+    </form>`);
+  const form = $('#password-form');
+  if (form && form.querySelector('input')) form.querySelector('input').focus();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = $('#password-error');
+    errEl.textContent = '';
+    const f = e.target;
+    const currentPassword = f.currentPassword.value.trim();
+    const newPassword = f.newPassword.value.trim();
+    if (newPassword !== f.confirmPassword.value.trim()) {
+      errEl.textContent = 'The two new passwords do not match.';
+      return;
+    }
+    const btn = f.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+      await api('/api/me/password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      closeModal();
+      toast('Password updated. Other devices were signed out.');
+    } catch (err) {
+      errEl.textContent = err.message;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save new password'; }
+    }
+  });
+});
+
 $('#mobile-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   try {

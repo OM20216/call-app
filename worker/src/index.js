@@ -279,6 +279,33 @@ export default {
         return json(request, { ok: true, user: { ...publicUser(user), mobile } });
       }
 
+      // Self-service password change. Requires the current password and keeps
+      // this session alive while signing out every other device.
+      if (path === '/api/me/password' && method === 'POST') {
+        if (!user) return json(request, { error: 'Not signed in.' }, 401);
+        const b = await readBody(request);
+        const current = String(b.currentPassword || '').trim();
+        const next = String(b.newPassword || '').trim();
+        if (next.length < 6) {
+          return json(request, { error: 'New password must be at least 6 characters.' }, 400);
+        }
+        if (current === next) {
+          return json(request, { error: 'New password must be different from the current one.' }, 400);
+        }
+        const row = await first(env, 'SELECT password_hash FROM hr_users WHERE id = ?', user.id);
+        if (!row || !(await verifyPassword(current, row.password_hash))) {
+          return json(request, { error: 'Current password is incorrect.' }, 400);
+        }
+        await run(env, 'UPDATE hr_users SET password_hash = ? WHERE id = ?', await hashPassword(next), user.id);
+        await run(
+          env,
+          'DELETE FROM sessions WHERE hr_id = ? AND token <> ?',
+          user.id,
+          parseCookies(request).sid || '',
+        );
+        return json(request, { ok: true });
+      }
+
       /* ---------------- address book ---------------- */
       if (path === '/api/address-book' && method === 'GET') {
         if (!user) return json(request, { error: 'Not signed in.' }, 401);

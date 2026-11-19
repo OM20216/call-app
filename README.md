@@ -9,7 +9,7 @@ The app runs in **two places**:
 
 | Where | Link | Notes |
 |---|---|---|
-| **This PC (office)** | **http://172.16.0.238:4200** | No cloud, starts with Windows, own SQLite database. Guide: [`worker/local/README.md`](worker/local/README.md) |
+| **This PC (office)** | **http://<office-Wi-Fi-IP>:4200** (auto-detected; check `/api/status`) | No cloud, starts with Windows, own SQLite database. Guide: [`worker/local/README.md`](worker/local/README.md) |
 | Cloudflare Worker | https://hr-call.hr-call-worker.workers.dev | Always on; D1 database (separate copy) |
 
 - Login: `admin@example.com` / `Admin@1234` (change after first login - "Change password" in the top bar)
